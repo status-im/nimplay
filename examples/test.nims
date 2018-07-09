@@ -15,6 +15,9 @@ let llTarget = "wasm32-unknown-unknown-wasm"
 switch("passC", "--target=" & llTarget)
 switch("passL", "--target=" & llTarget)
 
+switch("passC", "-I./include")
+
+
 switch("clang.exe", llBin & "/clang")
 switch("clang.linkerexe", llBin & "/clang")
 switch("clang.options.linker", "-nostdlib -Wl,--no-entry,--allow-undefined,--strip-all")
