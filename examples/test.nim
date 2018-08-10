@@ -1,7 +1,7 @@
 ## ewasm “WRC20” token contract coding challenge
 ## https://gist.github.com/axic/16158c5c88fbc7b1d09dfa8c658bc363
 
-import ../eth_contracts
+import ../eth_contracts, stint
 
 proc do_balance() =
   if getCallDataSize() != 24:
@@ -30,15 +30,21 @@ proc do_transfer() =
   var recipientBalance: array[32, byte]
   storageLoad(recipient, addr recipientBalance)
 
+  var sb = readUintBE[256](senderBalance)
+  var rb = readUintBE[256](recipientBalance)
+  let v = value.u256
+
   block:
     # This is a quick stub to avoid using stint for now. Works only with
     # single byte values.
-    if sender_balance[31].uint64 < value:
+    if sb < v:
       revert(nil, 0)
 
-    sender_balance[31] -= value.byte
-    recipient_balance[31] += value.byte
+    sb -= v
+    rb += v
 
+  senderBalance = sb.toByteArrayBE()
+  recipientBalance = rb.toByteArrayBE()
   storageStore(sender, addr senderBalance)
   storageStore(recipient, addr recipientBalance)
 
