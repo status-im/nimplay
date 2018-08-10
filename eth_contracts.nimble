@@ -13,4 +13,4 @@ proc buildExample(name: string) =
   exec "./postprocess.sh examples/" & name & ".wasm"
 
 task examples, "Build examples":
-  buildExample("test")
+  buildExample("wrc20")
