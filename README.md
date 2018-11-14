@@ -6,7 +6,7 @@ This is a sample of how building eWASM contracts in Nim is possible.
 Requirements:
 * clang 7.0 or later with WebAssembly support. Most likely has to be built manually.
 * 32bit version of libc. On linuxes it is usually provided by the package manager.
-* `wasm2wat` and `wat2wasm` from [wabt (WebAssembly binary toolkit)](https://github.com/WebAssembly/wabt)
+* `wasm2wat` and `wat2wasm` from [wabt (WebAssembly binary toolkit)](https://github.com/WebAssembly/wabt). They need to be in the `PATH`.
 * [optional] [wasm-gc](https://github.com/alexcrichton/wasm-gc) optimizer
 
 ## Compiling examples
