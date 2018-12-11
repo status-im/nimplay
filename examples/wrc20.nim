@@ -34,14 +34,11 @@ proc do_transfer() =
   var rb = readUintBE[256](recipientBalance)
   let v = value.u256
 
-  block:
-    # This is a quick stub to avoid using stint for now. Works only with
-    # single byte values.
-    if sb < v:
-      revert(nil, 0)
+  if sb < v:
+    revert(nil, 0)
 
-    sb -= v
-    rb += v
+  sb -= v
+  rb += v
 
   senderBalance = sb.toByteArrayBE()
   recipientBalance = rb.toByteArrayBE()
