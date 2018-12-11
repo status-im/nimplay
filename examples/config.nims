@@ -2,7 +2,6 @@
 --cpu:i386
 --cc:clang
 --gc:none
---d:release
 --nomain
 --opt:speed
 

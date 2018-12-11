@@ -9,7 +9,7 @@ skipDirs      = @["examples"]
 requires "nim >= 0.18.1", "stint"
 
 proc buildExample(name: string) =
-  exec "nim c --out:examples/" & name & ".wasm examples/" & name
+  exec "nim c -d:release --out:examples/" & name & ".wasm examples/" & name
   exec "./postprocess.sh examples/" & name & ".wasm"
 
 task examples, "Build examples":
