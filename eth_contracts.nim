@@ -9,13 +9,13 @@ proc useGas*(amount: int64)
 ##   `amount` - the amount to subtract to the gas counter
 
 proc getAddress*(resultOffset: pointer)
-## Gets address of currently executing account and loads it into memory at
+## Gets address of currently executing account and stores it in memory at
 ## the given offset.
 ##
 ## Parameters:
-##   `resultOffset` the memory offset to load the address into (`address`)
+##   `resultOffset` the memory offset at which the address is to be stored (`address`)
 
-proc getBalance*(addressOffset, resultOffset: pointer)
+proc getExternalBalance*(addressOffset, resultOffset: pointer)
 ## Gets balance of the given account and loads it into memory at the given offset.
 ##
 ## Parameters:
@@ -213,9 +213,9 @@ proc getTxOrigin*(resultOffset: pointer)
 ## Parameters:
 ##   `resultOffset` the memory offset to load the origin address from (`address`)
 
-proc ret*(dataOffset: pointer, length: int32) {.
-            importc: "retAux", codegenDecl: "$# $#$# __asm__(\"return\")".}
-## Set the returning output data for the execution.
+proc finish*(dataOffset: pointer, length: int32) {.noreturn.}
+## Set the returning output data for the execution. This will cause a trap and
+## the execution will be aborted immediately.
 ##
 ## Note: multiple invocations will overwrite the previous data.
 ##
@@ -223,8 +223,9 @@ proc ret*(dataOffset: pointer, length: int32) {.
 ##   `dataOffset` the memory offset of the output data (`bytes`)
 ##   `length` the length of the output data
 
-proc revert*(dataOffset: pointer, length: int32)
-## Set the returning output data for the execution.
+proc revert*(dataOffset: pointer, length: int32) {.noreturn.}
+## Set the returning output data for the execution. This will cause a trap and
+## the execution will be aborted immediately.
 ##
 ## Note: multiple invocations will overwrite the previous data.
 ##
@@ -252,11 +253,8 @@ proc returnDataCopy*(resultOffset: pointer, dataOffset, length: int32)
 
 proc selfDestruct*(addressOffset: pointer)
 ## Mark account for later deletion and give the remaining balance to the specified
-## beneficiary address. This takes effect once the contract execution terminates.
-##
-## Note: multiple invocations will overwrite the benficiary address.
-##
-## Note: the contract **shall** halt execution after this call.
+## beneficiary address. This will cause a trap and the execution will be aborted
+## immediately.
 ##
 ## Parameters:
 ##   `addressOffset` the memory offset to load the address from (`address`)

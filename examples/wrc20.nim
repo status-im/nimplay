@@ -12,7 +12,7 @@ proc do_balance() =
 
   var balance: array[32, byte]
   storageLoad(address, addr balance)
-  ret(addr balance, sizeof(balance).int32)
+  finish(addr balance, sizeof(balance).int32)
 
 proc do_transfer() =
   if getCallDataSize() != 32:
