@@ -33,10 +33,14 @@ make -j 4 install
 ```
 * **C compiler errors: headers not found.** Make sure you have 32bit libc installed and visible to your clang.
 
-
 ## License
 
-Licensed under one of the following:
+Licensed and distributed under either of
 
- * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license: [LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT
+* MIT license: [LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT
+
+or
+
+* Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+
+at your option. This file may not be copied, modified, or distributed except according to those terms.
