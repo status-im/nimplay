@@ -14,3 +14,4 @@ proc buildExample(name: string) =
 
 task examples, "Build examples":
   buildExample("wrc20")
+  buildExample("wrc202")
