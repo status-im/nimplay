@@ -1,36 +1,8 @@
 import ../eth_contracts
+import endians
+import stint
 
-proc hello(): int64 =
-    return 1234567
 
 proc main() {.exportwasm.} =
-    var res: int64 = 1234567
+    var res = 1234.stuint(256).toByteArrayBE
     finish(addr res, sizeof(res).int32)
-
-
-discard """
-[
-    {
-        "name": "hello",
-        "outputs": [
-            {
-                "type": "int64",
-                "name": "out"
-            }
-        ],
-        "inputs": [
-            {
-                "type": "int64",
-                "name": "a"
-            },
-            {
-                "type": "int64",
-                "name": "b"
-            }
-        ],
-        "constant": false,
-        "payable": false,
-        "type": "function",
-    }
-]
-"""

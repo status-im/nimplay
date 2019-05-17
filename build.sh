@@ -1,4 +1,5 @@
 #!/bin/bash
+
 export WASM_LLVM_BIN="./llvm-wasm/bin/"
 
 function print_contract () {

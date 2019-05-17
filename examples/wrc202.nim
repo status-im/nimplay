@@ -4,6 +4,9 @@ import ../eth_macros
 import macros
 
 
-contract_me:
+const main_file_path = currentSourcePath()
+
+
+proc MyContract() {.contract.} =
   proc hello(): int =
     return 1
