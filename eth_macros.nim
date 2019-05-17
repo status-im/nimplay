@@ -39,34 +39,39 @@ proc finalStmtList(stmts: NimNode): NimNode =
 
     # Create main func / selector.
     let main_func = parseStmt(
-    """
-proc main() {.exportwasm.} =
-    if getCallDataSize() < 4:
-        revert(nil, 0)
-    var selector: uint32
-    callDataCopy(selector, 0)
-    """
+        """
+        proc main() {.exportwasm.} =
+            if getCallDataSize() < 4:
+                revert(nil, 0)
+            var selector: uint32
+            callDataCopy(selector, 0)
+        """
     )
     out_stmts.add(main_func)
     return out_stmts
 
 
 macro contract*(proc_def: untyped): untyped =
-    echo "Before:"
-    echo treeRepr(proc_def)
+    # echo "Before:"
+    # echo treeRepr(proc_def)
     expectKind(proc_def, nnkProcDef)
 
     var final = newNimNode(nnkProcDef)
     var contract_name: string = ""
+    var stmtlist = newStmtList()
+
     for child in proc_def:
         case child.kind:
         of nnkIdent:
             contract_name = strVal(child)
         of nnkStmtList:
-            final.add(finalStmtList(child))
+            for s in finalStmtList(child):
+                stmtlist.add(s)
+        of nnkFormalParams:
+            discard
         else:
-            final.add(child)
+            stmtlist.add(child)
 
     echo "After:"
-    echo treeRepr(final)
-    return final
+    echo treeRepr(stmtlist)
+    return stmtlist

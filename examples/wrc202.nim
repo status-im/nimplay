@@ -3,10 +3,11 @@ import ../eth_macros
 
 import macros
 
+expandMacros:
+  proc MyContract {.contract.} =
 
-const main_file_path = currentSourcePath()
+    proc hello(): int =
+      result = 123
 
-
-proc MyContract() {.contract.} =
-  proc hello(): int =
-    return 1
+    proc helloone(): int =
+      result = 1
