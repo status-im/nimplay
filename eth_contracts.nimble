@@ -6,7 +6,7 @@ skipDirs      = @["examples"]
 
 # Dependencies
 
-requires "nim >= 0.18.1", "stint"
+requires "nim >= 0.18.1", "stint", "nimcrypto"
 
 proc buildExample(name: string) =
   exec "nim c -d:release --out:examples/" & name & ".wasm examples/" & name

@@ -1,7 +1,7 @@
 --os:standalone
 --cpu:i386
 --cc:clang
---gc:none
+--gc:regions
 --nomain
 --opt:speed
 

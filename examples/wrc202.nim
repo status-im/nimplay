@@ -2,12 +2,17 @@ import ../eth_contracts
 import ../eth_macros
 
 import macros
+import stint
+
 
 expandMacros:
-  proc MyContract {.contract.} =
+  contract("MyContract"):
 
-    proc hello(): int =
-      result = 123
+    proc hello(): uint256 =
+      return (123).stuint(256)
 
-    proc helloone(): int =
-      result = 1
+    proc hellonone() =
+      discard
+
+    proc addition(a: uint256, b: uint256): uint256 =
+      return a + b
