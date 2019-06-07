@@ -32,6 +32,8 @@ proc handleContractInterface(stmts: NimNode): NimNode =
         echo f
     echo "^^^"
 
+    # var a = get_abi_json(function_signatures)
+
     # Create main func / selector.
     # let main_func = parseStmt(
     #     """

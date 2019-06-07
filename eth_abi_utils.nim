@@ -1,6 +1,9 @@
 import macros
 import strutils
-import nimcrypto
+import stint
+import nimcrypto/keccak
+import nimcrypto/hash
+import nimcrypto/utils
 
 #     {
 #     "name": "test",
@@ -13,7 +16,6 @@ import nimcrypto
 #     "payable": False,
 #     "type": "function",
 # }
-
 
 type
     VariableType* = object
@@ -43,8 +45,10 @@ proc generate_method_sig*(func_sig: FunctionSignature): string =
     return method_str
 
 
-proc generate_method_id*(func_sig: FunctionSignature): string =
-    return keccak_256.digest(generate_method_sig(func_sig))
+proc generate_method_id*(func_sig: FunctionSignature): array[0..31, byte] =
+    var method_str = generate_method_sig(func_sig)
+    echo method_str
+    return keccak_256.digest(method_str).data
 
 
 proc generate_function_signature*(proc_def: NimNode): FunctionSignature =
@@ -78,8 +82,12 @@ proc generate_function_signature*(proc_def: NimNode): FunctionSignature =
         else:
             discard
             # raise newException(Exception, "unknown func type" & treeRepr(child))
-    echo generate_method_id(func_sig)
-    echo "%%%^^"
+
+    echo "method_id: " & generate_method_sig(func_sig)
+    var s = newSeq[byte]()
+    # var method_hash = generate_method_id(func_sig)
+    # for i in method_hash:
+    #     s.add(i)
+    # echo "method_hash" & toHex(method_hash)
 
     return func_sig
-

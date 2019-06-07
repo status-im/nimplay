@@ -12,7 +12,16 @@ proc buildExample(name: string) =
   exec "nim c -d:release --out:examples/" & name & ".wasm examples/" & name
   exec "./postprocess.sh examples/" & name & ".wasm"
 
+
+proc buildTool(name: string) =
+  exec "nim c -d:release --out:tools/" & name & " tools/" & name
+
+
 task examples, "Build examples":
   buildExample("wrc20")
   buildExample("wrc202")
   buildExample("hello")
+
+
+task tools, "Build tools":
+  buildTool("abi_gen")
