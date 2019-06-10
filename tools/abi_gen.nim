@@ -3,9 +3,6 @@ import compiler / [ast, vmdef, vm, nimeval, options, parser, idents, condsyms,
 import json
 import os
 
-# proc get_abi_json*(function_sigs: seq[FunctionSignature]): string =
-#     let jsonObject = %* {"element": "Hydrogen"}
-#     return $jsonObject
 
 type
     VariableType* = object
@@ -91,7 +88,29 @@ proc getPublicFunctions(stmts: PNode): seq[FunctionSignature] =
 
 
 proc generateJSONABI(funcs: seq[FunctionSignature]): string =
-    var jsonObject = %* funcs
+    var jsonObject = %* []
+
+    func getType(var_types: seq[VariableType]): JsonNode =
+        var types = %* []
+        for t in var_types:
+            types.add(%* {
+                "name": t.name,
+                "type": t.var_type
+            })
+        return types
+
+    func getFunc(f: FunctionSignature): JsonNode =
+        return %* {
+            "name": f.name,
+            "inputs": getType(f.inputs),
+            "outputs": getType(f.outputs),
+            "constant": f.constant,
+            "payable": f.payable,
+        }
+
+    for fn in funcs:
+        jsonObject.add(getFunc(fn))
+
     return $jsonObject
 
 
