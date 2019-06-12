@@ -25,7 +25,8 @@ proc handleContractInterface(stmts: NimNode): NimNode =
             function_signatures.add(generate_function_signature(child))
             out_stmts.add(child)
         else:
-            raise newException(ParserError, "Invalid stmt \"" & treeRepr(child) & "\" not supported in contract block")
+            discard
+            # raise newException(ParserError, ">> Invalid stmt \"" & treeRepr(child) & "\" not supported in contract block")
 
     echo "Function Signatures:"
     for f in function_signatures:

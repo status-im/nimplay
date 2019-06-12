@@ -1,8 +1,9 @@
 --os:standalone
 --cpu:i386
 --cc:clang
---gc:regions
+--gc:none
 --nomain
+# --d:weirdTarget
 
 let llBin = getEnv("WASM_LLVM_BIN")
 if llBin.len == 0:

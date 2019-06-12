@@ -48,7 +48,7 @@ proc generate_method_id*(func_sig: FunctionSignature): uint32 =
     # var method_str = generate_method_sig(func_sig)
     # echo method_str
     # return keccak_256.digest(method_str).data
-    return parseHexInt(getKHash(generate_method_sig(func_sig))[0..4])
+    return parseHexInt(getKHash(generate_method_sig(func_sig))[0..4]).uint32
 
 
 proc generate_function_signature*(proc_def: NimNode): FunctionSignature =

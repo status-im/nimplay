@@ -5,19 +5,20 @@ import macros
 import stint
 
 
-contract("MyContract"):
+expandMacros:
+  contract("MyContract"):
 
-  func addition(a: uint256, b: uint256): uint256 =
-    return a + b
+    func addition(a: uint256, b: uint256): uint256 =
+      return a + b
 
-  proc hello(): uint256 =
-    return (123).stuint(256)
+    proc hello(): uint256 =
+      return (123).stuint(256)
 
-  proc hellonone() =
-    discard
+    proc hellonone() =
+      discard
 
-  proc addition(a: uint256, b: uint256): uint256 =
-    return a + b
+    proc addition(a: uint256, b: uint256): uint256 =
+      return a + b
 
 
 # contract("MyContract"):
