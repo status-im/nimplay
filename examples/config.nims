@@ -3,7 +3,6 @@
 --cc:clang
 --gc:regions
 --nomain
---opt:speed
 
 let llBin = getEnv("WASM_LLVM_BIN")
 if llBin.len == 0:

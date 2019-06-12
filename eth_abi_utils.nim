@@ -4,18 +4,8 @@ import stint
 import nimcrypto/keccak
 import nimcrypto/hash
 import nimcrypto/utils
+import osproc
 
-#     {
-#     "name": "test",
-#     "outputs": [{
-#         "type": "int32",
-#         "name": "out"
-#     }],
-#     "inputs": [],
-#     "constant": True,
-#     "payable": False,
-#     "type": "function",
-# }
 
 type
     VariableType* = object
@@ -26,18 +16,19 @@ type
 type
     FunctionSignature* = object
         name: string
+        method_id: string
         inputs: seq[VariableType]
         outputs: seq[VariableType]
         constant: bool
         payable: bool
 
 
-proc generate_method_sig*(func_sig: FunctionSignature): string =
+proc generate_method_sig*(func_sig: FunctionSignature, v2_sig: bool = false): string =
     var inputs: seq[string]
     for input in func_sig.inputs:
         inputs.add(input.var_type)
     var method_str = func_sig.name & "(" & join(inputs, ",") & ")"
-    if len(func_sig.outputs) > 0:
+    if v2_sig and len(func_sig.outputs) > 0:
         var outputs: seq[string]
         for output in func_sig.outputs:
             outputs.add(output.var_type)
@@ -45,10 +36,19 @@ proc generate_method_sig*(func_sig: FunctionSignature): string =
     return method_str
 
 
-proc generate_method_id*(func_sig: FunctionSignature): array[0..31, byte] =
-    var method_str = generate_method_sig(func_sig)
-    echo method_str
-    return keccak_256.digest(method_str).data
+proc getKHash(inp: string): string =
+    let exec_string = "tools/k256_sig \"" & inp & "\""
+    echo exec_string
+    let outp_shell = execProcess(exec_string)
+    echo outp_shell
+    return outp_shell
+
+
+proc generate_method_id*(func_sig: FunctionSignature): uint32 =
+    # var method_str = generate_method_sig(func_sig)
+    # echo method_str
+    # return keccak_256.digest(method_str).data
+    return parseHexInt(getKHash(generate_method_sig(func_sig))[0..4])
 
 
 proc generate_function_signature*(proc_def: NimNode): FunctionSignature =
@@ -84,7 +84,8 @@ proc generate_function_signature*(proc_def: NimNode): FunctionSignature =
             # raise newException(Exception, "unknown func type" & treeRepr(child))
 
     echo "method_id: " & generate_method_sig(func_sig)
-    var s = newSeq[byte]()
+    
+    # var s = newSeq[byte]()
     # var method_hash = generate_method_id(func_sig)
     # for i in method_hash:
     #     s.add(i)

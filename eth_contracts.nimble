@@ -18,10 +18,12 @@ proc buildTool(name: string) =
 
 
 task examples, "Build examples":
-  buildExample("wrc20")
+  # buildExample("wrc20")
   buildExample("wrc202")
-  buildExample("hello")
+  # buildExample("hello")
+  # buildExample("hello2")
 
 
 task tools, "Build tools":
   buildTool("abi_gen")
+  buildTool("k256_sig")
