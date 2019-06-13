@@ -4,7 +4,8 @@ import stint
 import nimcrypto/keccak
 import nimcrypto/hash
 import nimcrypto/utils
-import osproc
+# import osproc
+
 
 
 type
@@ -16,11 +17,11 @@ type
 type
     FunctionSignature* = object
         name: string
-        method_id: string
         inputs: seq[VariableType]
         outputs: seq[VariableType]
         constant: bool
         payable: bool
+        method_id*: string
 
 
 proc generate_method_sig*(func_sig: FunctionSignature, v2_sig: bool = false): string =
@@ -36,19 +37,17 @@ proc generate_method_sig*(func_sig: FunctionSignature, v2_sig: bool = false): st
     return method_str
 
 
-proc getKHash(inp: string): string =
+proc getKHash(inp: string): string {.compileTime.} =
     let exec_string = "tools/k256_sig \"" & inp & "\""
-    echo exec_string
-    let outp_shell = execProcess(exec_string)
-    echo outp_shell
+    let outp_shell = staticExec(exec_string)
     return outp_shell
 
 
-proc generate_method_id*(func_sig: FunctionSignature): uint32 =
+proc generate_method_id*(func_sig: FunctionSignature): string =
     # var method_str = generate_method_sig(func_sig)
     # echo method_str
     # return keccak_256.digest(method_str).data
-    return parseHexInt(getKHash(generate_method_sig(func_sig))[0..4]).uint32
+    return getKHash(generate_method_sig(func_sig))[0..4]
 
 
 proc generate_function_signature*(proc_def: NimNode): FunctionSignature =
@@ -83,12 +82,14 @@ proc generate_function_signature*(proc_def: NimNode): FunctionSignature =
             discard
             # raise newException(Exception, "unknown func type" & treeRepr(child))
 
-    echo "method_id: " & generate_method_sig(func_sig)
+    echo "method_sig: " & generate_method_sig(func_sig)
     
     # var s = newSeq[byte]()
     # var method_hash = generate_method_id(func_sig)
     # for i in method_hash:
     #     s.add(i)
     # echo "method_hash" & toHex(method_hash)
+
+    func_sig.method_id = generate_method_id(func_sig)
 
     return func_sig

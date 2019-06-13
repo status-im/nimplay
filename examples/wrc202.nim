@@ -7,18 +7,27 @@ import stint
 
 expandMacros:
   contract("MyContract"):
-
-    func addition(a: uint256, b: uint256): uint256 =
-      return a + b
-
+    
     proc hello(): uint256 =
+      dumpAstGen:
+        var selector: uint32
+        callDataCopy(selector, 0)
+        case selector
+        of 0x9993021a'u32:
+          discard
+        else:
+          revert(nil, 0)
+
       return (123).stuint(256)
 
-    proc hellonone() =
-      discard
+    # func addition(a: uint256, b: uint256): uint256 =
+    #   return a + b
 
-    proc addition(a: uint256, b: uint256): uint256 =
-      return a + b
+    # proc hellonone() =
+    #   discard
+
+    # proc addition(a: uint256, b: uint256): uint256 =
+    #   return a + b
 
 
 # contract("MyContract"):
