@@ -10,17 +10,17 @@ import nimcrypto/utils
 
 type
     VariableType* = object
-        name: string
-        var_type: string
+        name*: string
+        var_type*: string
 
 
 type
     FunctionSignature* = object
-        name: string
-        inputs: seq[VariableType]
-        outputs: seq[VariableType]
-        constant: bool
-        payable: bool
+        name*: string
+        inputs*: seq[VariableType]
+        outputs*: seq[VariableType]
+        constant*: bool
+        payable*: bool
         method_id*: string
 
 

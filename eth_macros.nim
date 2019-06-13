@@ -1,9 +1,15 @@
-import macros, stint
+import macros
+import stint
+import system
+import strformat
+import tables
 
 import ./eth_abi_utils
 
 type uint256* = StUint[256]
+type int128* = StInt[128]
 type ParserError = object of Exception
+
 
 
 proc handleProcDef(func_stmt: NimNode): (string, NimNode) =
@@ -14,8 +20,23 @@ proc handleProcDef(func_stmt: NimNode): (string, NimNode) =
     return (func_name, func_stmt)
 
 
+proc get_byte_size_of(type_str: string): int =
+    let BASE32_TYPES_NAMES: array = [
+        "uint256",
+        "int128"
+    ]
+    if type_str in BASE32_TYPES_NAMES:
+        return 32
+    else:
+        raise newException(Exception, fmt"Unknown '{type_str}' type supplied!")
+
+
+func get_bit_size_of(type_str: string): int =
+    get_byte_size_of(type_str) * 8
+
+
 proc handleContractInterface(stmts: NimNode): NimNode = 
-    var out_stmts = newStmtList()
+    var main_out_stmts = newStmtList()
     var function_signatures = newSeq[FunctionSignature]()
 
     for child in stmts:
@@ -23,7 +44,7 @@ proc handleContractInterface(stmts: NimNode): NimNode =
         of nnkProcDef:
             let (func_name, out_def) = handleProcDef(child)
             function_signatures.add(generate_function_signature(child))
-            out_stmts.add(child)
+            main_out_stmts.add(child)
         else:
             discard
             # raise newException(ParserError, ">> Invalid stmt \"" &  getTypeInst(child) & "\" not supported in contract block")
@@ -32,16 +53,15 @@ proc handleContractInterface(stmts: NimNode): NimNode =
     # var selector_case = newNimNode(nnkCaseStmt)   
     # selector_case.add(newIdentNode("selector"))
     
-
     # Create main func / selector.
-    let main_func = parseStmt(
-        """
-        proc main() {.exportwasm.} =
-            if getCallDataSize() < 4:
-                revert(nil, 0)           
-        """
-    )
-    out_stmts.add(main_func)
+    # let main_func = parseStmt(
+    #     """
+    #         proc main() {.exportwasm.} =
+    #             if getCallDataSize() < 4:
+    #                 revert(nil, 0)
+    #     """
+    # )
+    var out_stmts = newStmtList()
     out_stmts.add(
         nnkVarSection.newTree( # var selector: uint32
             nnkIdentDefs.newTree(
@@ -62,40 +82,133 @@ proc handleContractInterface(stmts: NimNode): NimNode =
     )
 
     # selector_CaseStmt.add(newIdentNode("selector"))
+    # nnkStmtList.newTree(
+    #   nnkCall.newTree(
+    #     newIdentNode("hello"),
+    #     newIdentNode("a")
+    #   )
+    # )
 
-    for f in function_signatures:
-        echo f.method_id
-        selector_CaseStmt.add(
-            nnkOfBranch.newTree(  # of 0x<>'u32:
-                parseExpr( "0x" & f.method_id & "'u32"),
-                nnkStmtList.newTree(
-                    nnkDiscardStmt.newTree(
-                    newEmptyNode()
+    for func_sig in function_signatures:
+        echo "Building " & func_sig.method_id
+        var call_and_copy_block = nnkStmtList.newTree()
+        var call_to_func = nnkCall.newTree(
+            newIdentNode(func_sig.name)
+        )
+        var start_offset = 4
+
+        for idx, param in func_sig.inputs:
+            var static_param_size = get_byte_size_of(param.var_type)
+            var tmp_var_name = fmt"{func_sig.name}_param_{idx}"
+            var tmp_var_converted = fmt"{func_sig.name}_param_{idx}_converted"
+            # var <tmp_name>: <type>
+            call_and_copy_block.add(
+                nnkVarSection.newTree(
+                    nnkIdentDefs.newTree(
+                        newIdentNode(tmp_var_name),
+                        nnkBracketExpr.newTree(
+                            newIdentNode("array"),
+                            newLit(static_param_size),
+                            newIdentNode("byte")
+                        ),
+                        newEmptyNode()
                     )
                 )
             )
+            # callDataCopy(addr <tmp_name>, <offset>, <len>)
+            call_and_copy_block.add(
+                nnkCall.newTree(
+                    newIdentNode("callDataCopy"),
+                    nnkCommand.newTree(
+                      newIdentNode("addr"),
+                      newIdentNode(tmp_var_name)
+                    ),
+                    newLit(start_offset),
+                    newLit(static_param_size)
+                )
+            )
+            call_and_copy_block.add(
+                nnkLetSection.newTree(  # let c: uint256 = Uint256.fromBytesBE(b)
+                    nnkIdentDefs.newTree(
+                        newIdentNode(tmp_var_converted),
+                        newIdentNode(param.var_type),
+                        nnkCall.newTree(
+                            nnkDotExpr.newTree(
+                                newIdentNode("Uint256"),
+                                newIdentNode("fromBytesBE")
+                            ),
+                            newIdentNode(tmp_var_name)
+                        )
+                    )
+                )
+            )
+            call_to_func.add(newIdentNode(tmp_var_converted))
+            start_offset += static_param_size
+        # Add final function call.
+        call_and_copy_block.add(call_to_func)
+
+        # echo "⬇️⬇️⬇️⬇️⬇️"
+        # echo treeRepr(call_and_copy_block)
+        # echo "⬆️⬆️⬆️⬆️⬆️"
+
+        selector_CaseStmt.add(
+            nnkOfBranch.newTree(  # of 0x<>'u32:
+                parseExpr( "0x" & func_sig.method_id & "'u32"),
+                call_and_copy_block
+            )
         )
+
     # Add default revert into selector.
     selector_CaseStmt.add(
         nnkElse.newTree(
             nnkStmtList.newTree(
-            nnkCall.newTree(
-                newIdentNode("revert"),
-                newNilLit(),
-                newLit(0)
+                # nnkCall.newTree(
+                #     newIdentNode("revert"),
+                #     newNilLit(),
+                #     newLit(0)
+                # )
+                nnkDiscardStmt.newTree(  # discard
+                    newEmptyNode()
+                )
             )
         )
-      )
     )
-
     out_stmts.add(selector_CaseStmt)
 
+    # Build Main Func
+    # proc main() {.exportwasm.} =
+    # if getCallDataSize() < 4:
+    #     revert(nil, 0)
+
+#     out_stmts.add(
+#         parseStmt("""
+# if getCallDataSize() < 4:
+#     revert(nil, 0)
+#         """
+#         )
+#     )
+    var main_func = nnkStmtList.newTree(
+        nnkProcDef.newTree(
+            newIdentNode("main"),
+            newEmptyNode(),
+            newEmptyNode(),
+            nnkFormalParams.newTree(
+                newEmptyNode()
+            ),
+            nnkPragma.newTree(
+                newIdentNode("exportwasm")
+            ),
+            newEmptyNode(),
+            out_stmts,
+        )
+    )
+    main_out_stmts.add(main_func)
     # echo out_stmts
 
     # build selector:
     # keccak256("balance(address):(uint64)")[0, 4]
 
-    return out_stmts
+    return main_out_stmts
 
 
 macro contract*(contract_name: string, proc_def: untyped): untyped =
