@@ -9,8 +9,8 @@ expandMacros:
   contract("MyContract"):
 
     proc hello(a: uint256): uint256  {.discardable.} = # TODO: remove discardable, and parse output.
-      dumpAstGen:
-        let c: uint256 = Uint256.fromBytesBE(b)
+      # dumpAstGen:
+      #   let c: uint256 = Uint256.fromBytesBE(b)
       #   case a:
       #   else:
       #     discard
@@ -27,6 +27,9 @@ expandMacros:
         # else:
         #   revert(nil, 0)
       return (123).stuint(256)
+
+    proc world(a: uint256, b: uint256): uint256  {.discardable.} =
+        return (456).stuint(256)
 
     # func addition(a: uint256, b: uint256): uint256 =
     #   return a + b

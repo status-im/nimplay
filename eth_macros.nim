@@ -174,6 +174,12 @@ proc handleContractInterface(stmts: NimNode): NimNode =
         )
     )
     out_stmts.add(selector_CaseStmt)
+    out_stmts.add(nnkCall.newTree(
+            newIdentNode("revert"),
+            newNilLit(),
+            newLit(0)
+        )
+    )
 
     # Build Main Func
     # proc main() {.exportwasm.} =
