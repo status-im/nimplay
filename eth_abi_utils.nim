@@ -22,6 +22,7 @@ type
         constant*: bool
         payable*: bool
         method_id*: string
+        method_sig*: string
 
 
 proc generate_method_sig*(func_sig: FunctionSignature, v2_sig: bool = false): string =
@@ -82,14 +83,14 @@ proc generate_function_signature*(proc_def: NimNode): FunctionSignature =
             discard
             # raise newException(Exception, "unknown func type" & treeRepr(child))
 
-    echo "method_sig: " & generate_method_sig(func_sig)
+    # echo "method_sig: " & generate_method_sig(func_sig)
     
     # var s = newSeq[byte]()
     # var method_hash = generate_method_id(func_sig)
     # for i in method_hash:
     #     s.add(i)
     # echo "method_hash" & toHex(method_hash)
-
+    func_sig.method_sig = generate_method_sig(func_sig)
     func_sig.method_id = generate_method_id(func_sig)
 
     return func_sig

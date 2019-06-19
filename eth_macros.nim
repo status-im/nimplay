@@ -128,7 +128,7 @@ proc handleContractInterface(stmts: NimNode): NimNode =
                 )
             )
             call_and_copy_block.add(
-                nnkLetSection.newTree(  # let c: uint256 = Uint256.fromBytesBE(b)
+                nnkLetSection.newTree(  # let c: uint256 = Uint256.fromBytesBE(b), TODO: handle different types.
                     nnkIdentDefs.newTree(
                         newIdentNode(tmp_var_converted),
                         newIdentNode(param.var_type),
@@ -144,12 +144,71 @@ proc handleContractInterface(stmts: NimNode): NimNode =
             )
             call_to_func.add(newIdentNode(tmp_var_converted))
             start_offset += static_param_size
-        # Add final function call.
-        call_and_copy_block.add(call_to_func)
 
-        # echo "⬇️⬇️⬇️⬇️⬇️"
-        # echo treeRepr(call_and_copy_block)
-        # echo "⬆️⬆️⬆️⬆️⬆️"
+        # Handle returned data from function.
+        if len(func_sig.outputs) == 0:
+            # Add final function call.
+            call_and_copy_block.add(call_to_func)
+            call_and_copy_block.add(
+                nnkStmtList.newTree(
+                    nnkCall.newTree(
+                        newIdentNode("finish"),
+                        newNilLit(),
+                        newLit(0)
+                    )
+                )
+            )
+        elif len(func_sig.outputs) == 1:
+            var assign_result_block = nnkAsgn.newTree()
+            var param = func_sig.outputs[0]
+            var idx = 0
+            # create placeholder variables
+            var tmp_var_res_name = fmt"{func_sig.name}_result_{idx}"
+            var tmp_var_res_name_array = tmp_var_res_name & "_arr"
+            call_and_copy_block.add(
+                nnkVarSection.newTree(
+                    nnkIdentDefs.newTree(
+                        nnkPragmaExpr.newTree(
+                            newIdentNode(tmp_var_res_name),
+                            nnkPragma.newTree(
+                                newIdentNode("noinit")
+                            )
+                        ),
+                        newIdentNode(param.var_type),
+                        newEmptyNode()
+                    )
+                )
+            )
+            assign_result_block.add(newIdentNode(tmp_var_res_name))
+            assign_result_block.add(call_to_func)
+            call_and_copy_block.add(assign_result_block)
+            call_and_copy_block.add(
+                nnkVarSection.newTree(
+                    nnkIdentDefs.newTree(
+                      newIdentNode(tmp_var_res_name_array),
+                      newEmptyNode(),
+                      nnkDotExpr.newTree(
+                        newIdentNode(tmp_var_res_name),
+                        newIdentNode("toByteArrayBE")
+                      )
+                    )
+                  )
+            )
+            call_and_copy_block.add(
+                nnkCall.newTree(
+                    newIdentNode("finish"),
+                    nnkCommand.newTree(
+                        newIdentNode("addr"),
+                        newIdentNode(tmp_var_res_name_array)
+                    ),
+                    newLit(get_byte_size_of(param.var_type))
+                )
+            )
+        else:
+            raise newException(
+                Exception, 
+                "Can only handle function with a single variable output ATM."
+            )
 
         selector_CaseStmt.add(
             nnkOfBranch.newTree(  # of 0x<>'u32:

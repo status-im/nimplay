@@ -26,10 +26,21 @@ expandMacros:
         #   discard
         # else:
         #   revert(nil, 0)
+
+      # dumpAstGen:  
+        # var res {.noinit.}: uint256
+      dumpAstGen:
+        var res = hello(a)
+        var res_a = res.toByteArrayBE
+        finish(addr res_a, 256)
+        # finish(nil, 0)
       return (123).stuint(256)
 
     proc world(a: uint256, b: uint256): uint256  {.discardable.} =
         return (456).stuint(256)
+
+    proc do_nothing(a: uint256, b: uint256) =
+      discard
 
     # func addition(a: uint256, b: uint256): uint256 =
     #   return a + b
