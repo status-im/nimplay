@@ -9,7 +9,7 @@ proc main() =
         echo("Requires single parameter to be hashed")
         quit()
 
-    echo(keccak256.digest(commandLineParams()[0])))
+    echo(keccak256.digest(commandLineParams()[0]))
 
 
 when is_main_module:

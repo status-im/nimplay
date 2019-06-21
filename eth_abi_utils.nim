@@ -24,7 +24,6 @@ type
         method_id*: string
         method_sig*: string
 
-
 proc generate_method_sig*(func_sig: FunctionSignature, v2_sig: bool = false): string =
     var inputs: seq[string]
     for input in func_sig.inputs:
@@ -48,7 +47,7 @@ proc generate_method_id*(func_sig: FunctionSignature): string =
     # var method_str = generate_method_sig(func_sig)
     # echo method_str
     # return keccak_256.digest(method_str).data
-    return getKHash(generate_method_sig(func_sig))[0..4]
+    return getKHash(generate_method_sig(func_sig))[0..7]
 
 
 proc generate_function_signature*(proc_def: NimNode): FunctionSignature =
@@ -83,13 +82,6 @@ proc generate_function_signature*(proc_def: NimNode): FunctionSignature =
             discard
             # raise newException(Exception, "unknown func type" & treeRepr(child))
 
-    # echo "method_sig: " & generate_method_sig(func_sig)
-    
-    # var s = newSeq[byte]()
-    # var method_hash = generate_method_id(func_sig)
-    # for i in method_hash:
-    #     s.add(i)
-    # echo "method_hash" & toHex(method_hash)
     func_sig.method_sig = generate_method_sig(func_sig)
     func_sig.method_id = generate_method_id(func_sig)
 

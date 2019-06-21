@@ -3,6 +3,8 @@ import stint
 import system
 import strformat
 import tables
+import endians
+
 
 import ./eth_abi_utils
 
@@ -77,6 +79,23 @@ proc handleContractInterface(stmts: NimNode): NimNode =
         ),
     )
 
+    # Convert selector.
+    out_stmts.add(
+        nnkStmtList.newTree(
+            newCall(
+                bindSym"bigEndian32",
+                nnkCommand.newTree(
+                    newIdentNode("addr"),
+                    newIdentNode("selector")
+                ),
+                nnkCommand.newTree(
+                    newIdentNode("addr"),
+                    newIdentNode("selector")
+                )
+            )
+        )
+    )
+
     var selector_CaseStmt = nnkCaseStmt.newTree(
         newIdentNode("selector")
     )
@@ -90,7 +109,7 @@ proc handleContractInterface(stmts: NimNode): NimNode =
     # )
 
     for func_sig in function_signatures:
-        echo "Building " & func_sig.method_id
+        echo "Building " & func_sig.method_sig
         var call_and_copy_block = nnkStmtList.newTree()
         var call_to_func = nnkCall.newTree(
             newIdentNode(func_sig.name)
@@ -127,6 +146,16 @@ proc handleContractInterface(stmts: NimNode): NimNode =
                     newLit(static_param_size)
                 )
             )
+            # call_and_copy_block.add(
+            #     nnkCall.newTree(
+            #         newIdentNode("finish"),
+            #         nnkCommand.newTree(
+            #           newIdentNode("addr"),
+            #           newIdentNode(tmp_var_name)
+            #         ),
+            #         newLit(static_param_size)
+            #     )
+            # )
             call_and_copy_block.add(
                 nnkLetSection.newTree(  # let c: uint256 = Uint256.fromBytesBE(b), TODO: handle different types.
                     nnkIdentDefs.newTree(
@@ -145,7 +174,7 @@ proc handleContractInterface(stmts: NimNode): NimNode =
             call_to_func.add(newIdentNode(tmp_var_converted))
             start_offset += static_param_size
 
-        # Handle returned data from function.
+        # # Handle returned data from function.
         if len(func_sig.outputs) == 0:
             # Add final function call.
             call_and_copy_block.add(call_to_func)

@@ -37,7 +37,7 @@ proc string_to_ast*(s: string): PNode {.raises: [Exception] .} =
 
 
 proc generate_function_signature(proc_def: PNode): FunctionSignature =
-    doAssert(proc_def.kind == nkFuncDef)
+    doAssert(proc_def.kind == nkFuncDef or proc_def.kind == nkProcDef)
     var func_sig = FunctionSignature()
 
     for child in proc_def.sons:
@@ -72,6 +72,7 @@ proc generate_function_signature(proc_def: PNode): FunctionSignature =
 
 proc getPublicFunctions(stmts: PNode): seq[FunctionSignature] =
     var public_functions: seq[FunctionSignature]
+
     for child in stmts:
         if child.kind == nkCall and len(child.sons) > 2:
             var first_son = child.sons[0]
@@ -80,7 +81,7 @@ proc getPublicFunctions(stmts: PNode): seq[FunctionSignature] =
                 for b in main_block.sons:
                     if b.kind == nkStmtList:
                         for s in b.sons:
-                            if s.kind == nkFuncDef:
+                            if s.kind == nkFuncDef or s.kind == nkProcDef:
                                 public_functions.add(
                                     generate_function_signature(s)
                                 )
@@ -106,6 +107,7 @@ proc generateJSONABI(funcs: seq[FunctionSignature]): string =
             "outputs": getType(f.outputs),
             "constant": f.constant,
             "payable": f.payable,
+            "type": "function"
         }
 
     for fn in funcs:
