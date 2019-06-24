@@ -10,8 +10,10 @@ import ./eth_abi_utils
 
 type uint256* = StUint[256]
 type int128* = StInt[128]
-type ParserError = object of Exception
+type address* = array[32, byte]
 
+
+type ParserError = object of Exception
 
 
 proc handleProcDef(func_stmt: NimNode): (string, NimNode) =
@@ -25,16 +27,89 @@ proc handleProcDef(func_stmt: NimNode): (string, NimNode) =
 proc get_byte_size_of(type_str: string): int =
     let BASE32_TYPES_NAMES: array = [
         "uint256",
-        "int128"
+        "int128",
+        "address"
     ]
     if type_str in BASE32_TYPES_NAMES:
         return 32
     else:
-        raise newException(Exception, fmt"Unknown '{type_str}' type supplied!")
+        raise newException(ParserError, fmt"Unknown '{type_str}' type supplied!")
 
 
 func get_bit_size_of(type_str: string): int =
     get_byte_size_of(type_str) * 8
+
+
+proc get_local_input_type_conversion(tmp_var_name, tmp_var_converted_name, var_type: string): (NimNode, NimNode) =
+    case var_type
+    of "uint256":
+        var convert_node = nnkLetSection.newTree(
+            nnkIdentDefs.newTree(
+                newIdentNode(tmp_var_converted_name),
+                newIdentNode(var_type),
+                nnkCall.newTree(
+                    nnkDotExpr.newTree(
+                        newIdentNode("Uint256"),
+                        newIdentNode("fromBytesBE")
+                    ),
+                    newIdentNode(tmp_var_name)
+                )
+            )
+        )
+        var ident_node = newIdentNode(tmp_var_converted_name)
+        return (ident_node, convert_node)
+    of "address":
+        return (newEmptyNode(), newEmptyNode())
+    else:
+        raise newException(ParserError, fmt"Unknown '{var_type}' type supplied!")
+
+
+proc get_local_output_type_conversion(tmp_result_name, tmp_result_converted_name, var_type: string): (NimNode, NimNode) =
+    case var_type
+    of "uint256":
+        var ident_node = newIdentNode(tmp_result_converted_name)
+        var conversion_node = nnkVarSection.newTree(
+            nnkIdentDefs.newTree(
+            newIdentNode(tmp_result_converted_name),
+            newEmptyNode(),
+                nnkDotExpr.newTree(
+                    newIdentNode(tmp_result_name),
+                    newIdentNode("toByteArrayBE")
+                )
+            )
+        )
+        return (ident_node, conversion_node)
+    of "address":
+        # var ident_node = newIdentNode(tmp_result_converted_name)
+        var ident_node = newIdentNode(tmp_result_name)
+        var conversion_node = nnkStmtList.newTree(
+            nnkVarSection.newTree(  # var a: array[32, byte]
+                nnkIdentDefs.newTree(
+                    newIdentNode(tmp_result_converted_name),
+                    nnkBracketExpr.newTree(
+                        newIdentNode("array"),
+                        newLit(32),
+                        newIdentNode("byte"),
+                    ),
+                    newEmptyNode()
+                )
+            ),
+            nnkAsgn.newTree(  # a[11..31] = tmp_addr
+                nnkBracketExpr.newTree(
+                    newIdentNode(tmp_result_converted_name),
+                    nnkInfix.newTree(
+                        newIdentNode(".."),
+                        newLit(11),
+                        newLit(31)
+                    )
+                ),
+                # newIdentNode(tmp_result_converted_name),
+                newIdentNode(tmp_result_name)
+            )
+        )
+        return (ident_node, conversion_node)
+    else:
+        raise newException(ParserError, fmt"Unknown '{var_type}' type supplied!")
 
 
 proc handleContractInterface(stmts: NimNode): NimNode = 
@@ -119,7 +194,7 @@ proc handleContractInterface(stmts: NimNode): NimNode =
         for idx, param in func_sig.inputs:
             var static_param_size = get_byte_size_of(param.var_type)
             var tmp_var_name = fmt"{func_sig.name}_param_{idx}"
-            var tmp_var_converted = fmt"{func_sig.name}_param_{idx}_converted"
+            var tmp_var_converted_name = fmt"{func_sig.name}_param_{idx}_converted"
             # var <tmp_name>: <type>
             call_and_copy_block.add(
                 nnkVarSection.newTree(
@@ -146,35 +221,19 @@ proc handleContractInterface(stmts: NimNode): NimNode =
                     newLit(static_param_size)
                 )
             )
-            # call_and_copy_block.add(
-            #     nnkCall.newTree(
-            #         newIdentNode("finish"),
-            #         nnkCommand.newTree(
-            #           newIdentNode("addr"),
-            #           newIdentNode(tmp_var_name)
-            #         ),
-            #         newLit(static_param_size)
-            #     )
-            # )
-            call_and_copy_block.add(
-                nnkLetSection.newTree(  # let c: uint256 = Uint256.fromBytesBE(b), TODO: handle different types.
-                    nnkIdentDefs.newTree(
-                        newIdentNode(tmp_var_converted),
-                        newIdentNode(param.var_type),
-                        nnkCall.newTree(
-                            nnkDotExpr.newTree(
-                                newIdentNode("Uint256"),
-                                newIdentNode("fromBytesBE")
-                            ),
-                            newIdentNode(tmp_var_name)
-                        )
-                    )
-                )
+            
+            # Get conversion code if necessary.
+            let (ident_node, convert_node) = get_local_input_type_conversion(
+                tmp_var_name,
+                tmp_var_converted_name,
+                param.var_type
             )
-            call_to_func.add(newIdentNode(tmp_var_converted))
+            if  not (ident_node.kind == nnkEmpty):
+                call_and_copy_block.add(convert_node)
+                call_to_func.add(ident_node)
             start_offset += static_param_size
 
-        # # Handle returned data from function.
+        # Handle returned data from function.
         if len(func_sig.outputs) == 0:
             # Add final function call.
             call_and_copy_block.add(call_to_func)
@@ -192,13 +251,13 @@ proc handleContractInterface(stmts: NimNode): NimNode =
             var param = func_sig.outputs[0]
             var idx = 0
             # create placeholder variables
-            var tmp_var_res_name = fmt"{func_sig.name}_result_{idx}"
-            var tmp_var_res_name_array = tmp_var_res_name & "_arr"
+            var tmp_result_name = fmt"{func_sig.name}_result_{idx}"
+            var tmp_result_converted_name = tmp_result_name & "_arr"
             call_and_copy_block.add(
                 nnkVarSection.newTree(
                     nnkIdentDefs.newTree(
                         nnkPragmaExpr.newTree(
-                            newIdentNode(tmp_var_res_name),
+                            newIdentNode(tmp_result_name),
                             nnkPragma.newTree(
                                 newIdentNode("noinit")
                             )
@@ -208,27 +267,28 @@ proc handleContractInterface(stmts: NimNode): NimNode =
                     )
                 )
             )
-            assign_result_block.add(newIdentNode(tmp_var_res_name))
+            assign_result_block.add(newIdentNode(tmp_result_name))
             assign_result_block.add(call_to_func)
+
             call_and_copy_block.add(assign_result_block)
-            call_and_copy_block.add(
-                nnkVarSection.newTree(
-                    nnkIdentDefs.newTree(
-                      newIdentNode(tmp_var_res_name_array),
-                      newEmptyNode(),
-                      nnkDotExpr.newTree(
-                        newIdentNode(tmp_var_res_name),
-                        newIdentNode("toByteArrayBE")
-                      )
-                    )
-                  )
+            let (tmp_conversion_ident_node, conversion_node) = get_local_output_type_conversion(
+                tmp_result_name,
+                tmp_result_converted_name,
+                param.var_type
             )
+
+            # if conversion_node.kind == nnkStmtList:
+            #     for child in conversion_node:
+            #         call_and_copy_block.add(child)
+            # else:
+            call_and_copy_block.add(conversion_node)
+
             call_and_copy_block.add(
                 nnkCall.newTree(
                     newIdentNode("finish"),
                     nnkCommand.newTree(
                         newIdentNode("addr"),
-                        newIdentNode(tmp_var_res_name_array)
+                        tmp_conversion_ident_node
                     ),
                     newLit(get_byte_size_of(param.var_type))
                 )
@@ -308,7 +368,7 @@ proc handleContractInterface(stmts: NimNode): NimNode =
 macro contract*(contract_name: string, proc_def: untyped): untyped =
     echo contract_name
     # echo "Before:"
-    echo treeRepr(proc_def)
+    # echo treeRepr(proc_def)
     expectKind(proc_def, nnkStmtList)
     var stmtlist = handleContractInterface(proc_def)
     # echo "After:"

@@ -24,6 +24,7 @@ type
         method_id*: string
         method_sig*: string
 
+
 proc generate_method_sig*(func_sig: FunctionSignature, v2_sig: bool = false): string =
     var inputs: seq[string]
     for input in func_sig.inputs:

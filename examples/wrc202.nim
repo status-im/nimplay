@@ -1,21 +1,29 @@
 import ../eth_contracts
 import ../eth_macros
 
+import endians
 import macros
 import stint
-# import endians
 
-contract("MyContract"):
+expandMacros:
+  contract("MyContract"):
 
-    proc addition(a: uint256, b: uint256): uint256 =
-      return a + b
+    proc get_sender(): address =
+      var tmp_addr: address
+      getCaller(addr tmp_addr)
+      return tmp_addr
+
+    # getCaller(addr tmp_addr)
+    # proc addition(a: uint256, b: uint256): uint256 =
+    #   return a + b
 
     # blacklist storageStore
-    proc hello333(a: uint256): uint256 =
-      discard
+    # proc hello333(a: uint256): uint256 =
+    #   discard
 
-    proc hello(a: uint256): uint256 =
-      # dumpAstGen:
+    # proc hello(a: uint256): uint256 =
+
+    # dumpAstGen:
       #   let c: uint256 = Uint256.fromBytesBE(b)
       #   case a:
       #   else:
@@ -45,7 +53,7 @@ contract("MyContract"):
         # finish(nil, 0)
       # dumpAstGen:
       #   bigEndian32(addr selector, addr selector)
-      return (123).stuint(256)
+      # return (123).stuint(256)
 
     # proc AllWorksToken() {.discardable.} =
     #   var b: array[32, byte] = (77877).stuint(256).toByteArrayBE()
