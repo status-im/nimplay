@@ -10,7 +10,7 @@ import ./eth_abi_utils
 
 type uint256* = StUint[256]
 type int128* = StInt[128]
-type address* = array[32, byte]
+type address* = array[20, byte]
 
 
 type ParserError = object of Exception
@@ -80,8 +80,7 @@ proc get_local_output_type_conversion(tmp_result_name, tmp_result_converted_name
         )
         return (ident_node, conversion_node)
     of "address":
-        # var ident_node = newIdentNode(tmp_result_converted_name)
-        var ident_node = newIdentNode(tmp_result_name)
+        var ident_node = newIdentNode(tmp_result_converted_name)
         var conversion_node = nnkStmtList.newTree(
             nnkVarSection.newTree(  # var a: array[32, byte]
                 nnkIdentDefs.newTree(
@@ -99,15 +98,15 @@ proc get_local_output_type_conversion(tmp_result_name, tmp_result_converted_name
                     newIdentNode(tmp_result_converted_name),
                     nnkInfix.newTree(
                         newIdentNode(".."),
-                        newLit(11),
+                        newLit(12),
                         newLit(31)
                     )
                 ),
-                # newIdentNode(tmp_result_converted_name),
                 newIdentNode(tmp_result_name)
             )
         )
         return (ident_node, conversion_node)
+        # return (newIdentNode(tmp_result_name), newEmptyNode())
     else:
         raise newException(ParserError, fmt"Unknown '{var_type}' type supplied!")
 

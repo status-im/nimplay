@@ -5,8 +5,9 @@ import endians
 import macros
 import stint
 
-expandMacros:
-  contract("MyContract"):
+
+# expandMacros:
+contract("MyContract"):
 
     proc get_sender(): address =
       var tmp_addr: address

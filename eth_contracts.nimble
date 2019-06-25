@@ -22,6 +22,7 @@ task examples, "Build examples":
   buildExample("wrc202")
   # buildExample("hello")
   # buildExample("hello2")
+  # buildExample("hello3")
 
 
 task tools, "Build tools":
