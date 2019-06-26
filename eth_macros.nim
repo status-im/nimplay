@@ -6,22 +6,33 @@ import tables
 import endians
 
 
-import ./eth_abi_utils
+import ./eth_abi_utils, ./builtin_keywords
 
 type uint256* = StUint[256]
 type int128* = StInt[128]
 type address* = array[20, byte]
-
+type bytes32* = array[32, byte]
 
 type ParserError = object of Exception
 
+type
+    LocalContext* = object
+        # Name of the function.
+        name: string
+        # Function signature, used for function selection and ABI encoding / decoding.
+        sig: FunctionSignature
+        # Global temp variables create at beginning of the function.
+        keyword_define_stmts: NimNode
+        # Map of temp variables that have to be replaced by.
+        global_keyword_map: Table[string, string] 
 
-proc handleProcDef(func_stmt: NimNode): (string, NimNode) =
+
+proc get_func_name(proc_def: NimNode): string =
     var func_name = ""
-    for child in func_stmt:
+    for child in proc_def:
         if child.kind == nnkIdent:
             func_name = strVal(child)
-    return (func_name, func_stmt)
+    return func_name
 
 
 proc get_byte_size_of(type_str: string): int =
@@ -111,32 +122,35 @@ proc get_local_output_type_conversion(tmp_result_name, tmp_result_converted_name
         raise newException(ParserError, fmt"Unknown '{var_type}' type supplied!")
 
 
-proc handleContractInterface(stmts: NimNode): NimNode = 
+proc generate_context(proc_def: NimNode): LocalContext =
+    var ctx = LocalContext()
+    ctx.name = get_func_name(proc_def)
+    ctx.sig = generate_function_signature(proc_def)
+    (ctx.keyword_define_stmts, ctx.global_keyword_map) = get_keyword_defines(proc_def)
+    return ctx
+
+
+proc handle_contract_interface(stmts: NimNode): NimNode = 
     var main_out_stmts = newStmtList()
     var function_signatures = newSeq[FunctionSignature]()
 
     for child in stmts:
         case child.kind:
         of nnkProcDef:
-            let (func_name, out_def) = handleProcDef(child)
-            function_signatures.add(generate_function_signature(child))
-            main_out_stmts.add(child)
+            var ctx = generate_context(child)
+            function_signatures.add(ctx.sig)
+            var new_proc_def = replace_keywords(
+                ast_node=child,
+                global_keyword_map=ctx.global_keyword_map
+            )
+            # Insert global defines.
+            new_proc_def[6].insert(0, ctx.keyword_define_stmts)
+            main_out_stmts.add(new_proc_def)
         else:
             discard
             # raise newException(ParserError, ">> Invalid stmt \"" &  getTypeInst(child) & "\" not supported in contract block")
 
-    # var a = get_abi_json(function_signatures)
-    # var selector_case = newNimNode(nnkCaseStmt)   
-    # selector_case.add(newIdentNode("selector"))
-    
-    # Create main func / selector.
-    # let main_func = parseStmt(
-    #     """
-    #         proc main() {.exportwasm.} =
-    #             if getCallDataSize() < 4:
-    #                 revert(nil, 0)
-    #     """
-    # )
+    # Build Main Entrypoint.
     var out_stmts = newStmtList()
     out_stmts.add(
         nnkVarSection.newTree( # var selector: uint32
@@ -369,7 +383,7 @@ macro contract*(contract_name: string, proc_def: untyped): untyped =
     # echo "Before:"
     # echo treeRepr(proc_def)
     expectKind(proc_def, nnkStmtList)
-    var stmtlist = handleContractInterface(proc_def)
+    var stmtlist = handle_contract_interface(proc_def)
     # echo "After:"
     # echo treeRepr(stmtlist)
     return stmtlist

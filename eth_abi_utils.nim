@@ -52,6 +52,7 @@ proc generate_method_id*(func_sig: FunctionSignature): string =
 
 
 proc generate_function_signature*(proc_def: NimNode): FunctionSignature =
+    expectKind(proc_def, nnkProcDef)
 
     var func_sig = FunctionSignature()
     for child in proc_def:

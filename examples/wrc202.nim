@@ -1,18 +1,25 @@
 import ../eth_contracts
 import ../eth_macros
 
+
+import math
 import endians
 import macros
 import stint
 
 
-# expandMacros:
-contract("MyContract"):
+expandMacros:
+  contract("MyContract"):
+
+  # proc becomeKing(): uint256 =
+  #   var a: int32
+  #   a = (2^31-1).int32
+  #   a += 1.int32
+  #   return a.stuint(256)
 
     proc get_sender(): address =
-      var tmp_addr: address
-      getCaller(addr tmp_addr)
-      return tmp_addr
+     if true:
+        return msg.sender
 
     # getCaller(addr tmp_addr)
     # proc addition(a: uint256, b: uint256): uint256 =
