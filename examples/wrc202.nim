@@ -8,8 +8,7 @@ import macros
 import stint
 
 
-expandMacros:
-  contract("MyContract"):
+contract("MyContract"):
 
   # proc becomeKing(): uint256 =
   #   var a: int32
