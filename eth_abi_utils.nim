@@ -23,6 +23,7 @@ type
         payable*: bool
         method_id*: string
         method_sig*: string
+        is_private*: bool
 
 
 proc generate_method_sig*(func_sig: FunctionSignature, v2_sig: bool = false): string =
@@ -59,6 +60,10 @@ proc generate_function_signature*(proc_def: NimNode): FunctionSignature =
         case child.kind:
         of nnkIdent:
             func_sig.name = strVal(child)
+            func_sig.is_private = true
+        of nnkPostfix:
+            func_sig.name = strVal(child[1])
+            func_sig.is_private = false
         of nnkFormalParams:
             for param in  child:
                 case param.kind 

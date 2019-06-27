@@ -4,7 +4,7 @@ import system
 import strformat
 import tables
 import endians
-
+import sequtils
 
 import ./eth_abi_utils, ./builtin_keywords
 
@@ -24,14 +24,18 @@ type
         # Global temp variables create at beginning of the function.
         keyword_define_stmts: NimNode
         # Map of temp variables that have to be replaced by.
-        global_keyword_map: Table[string, string] 
+        global_keyword_map: Table[string, string]
 
 
 proc get_func_name(proc_def: NimNode): string =
     var func_name = ""
     for child in proc_def:
+        if child.kind == nnkPostfix:
+            func_name = strVal(child[1])
+            break
         if child.kind == nnkIdent:
             func_name = strVal(child)
+            break
     return func_name
 
 
@@ -150,6 +154,14 @@ proc handle_contract_interface(stmts: NimNode): NimNode =
             discard
             # raise newException(ParserError, ">> Invalid stmt \"" &  getTypeInst(child) & "\" not supported in contract block")
 
+    echo function_signatures
+
+    if filter(function_signatures, proc(x: FunctionSignature): bool = x.is_private).len == 0:
+        raise newException(
+            ParserError,
+            "No public functions have defined, use * postfix to annotate public functions."
+        )
+
     # Build Main Entrypoint.
     var out_stmts = newStmtList()
     out_stmts.add(
@@ -188,15 +200,12 @@ proc handle_contract_interface(stmts: NimNode): NimNode =
         newIdentNode("selector")
     )
 
-    # selector_CaseStmt.add(newIdentNode("selector"))
-    # nnkStmtList.newTree(
-    #   nnkCall.newTree(
-    #     newIdentNode("hello"),
-    #     newIdentNode("a")
-    #   )
-    # )
+    # Build function selector.
 
     for func_sig in function_signatures:
+        if func_sig.is_private:
+            echo "!!!"
+            continue
         echo "Building " & func_sig.method_sig
         var call_and_copy_block = nnkStmtList.newTree()
         var call_to_func = nnkCall.newTree(

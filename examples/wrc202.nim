@@ -7,8 +7,8 @@ import endians
 import macros
 import stint
 
-
-contract("MyContract"):
+expandMacros:
+  contract("MyContract"):
 
   # proc becomeKing(): uint256 =
   #   var a: int32
@@ -16,9 +16,16 @@ contract("MyContract"):
   #   a += 1.int32
   #   return a.stuint(256)
 
+    proc get_sender222(): address =
+     if true:
+        return msg.sender
+
     proc get_sender(): address =
      if true:
         return msg.sender
+
+    proc publicGetSender*(): address =
+      return msg.sender
 
     # getCaller(addr tmp_addr)
     # proc addition(a: uint256, b: uint256): uint256 =
