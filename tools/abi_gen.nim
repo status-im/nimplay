@@ -42,8 +42,8 @@ proc generate_function_signature(proc_def: PNode): FunctionSignature =
 
     for child in proc_def.sons:
         case child.kind:
-        of nkIdent:
-            func_sig.name = child.ident.s
+        of nkPostfix:
+            func_sig.name = child[1].ident.s
         of nkFormalParams:
             for param in  child:
                 case param.kind
@@ -82,9 +82,11 @@ proc getPublicFunctions(stmts: PNode): seq[FunctionSignature] =
                     if b.kind == nkStmtList:
                         for s in b.sons:
                             if s.kind == nkFuncDef or s.kind == nkProcDef:
-                                public_functions.add(
-                                    generate_function_signature(s)
-                                )
+                                # only get public functions.
+                                if s[0].kind == nkPostfix and s[0][0].ident.s == "*":
+                                    public_functions.add(
+                                        generate_function_signature(s)
+                                    )
     return public_functions
 
 
