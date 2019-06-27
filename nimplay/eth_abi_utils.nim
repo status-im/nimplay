@@ -40,7 +40,7 @@ proc generate_method_sig*(func_sig: FunctionSignature, v2_sig: bool = false): st
 
 
 proc getKHash(inp: string): string {.compileTime.} =
-    let exec_string = "tools/k256_sig \"" & inp & "\""
+    let exec_string = "../tools/k256_sig \"" & inp & "\""
     let outp_shell = staticExec(exec_string)
     return outp_shell
 

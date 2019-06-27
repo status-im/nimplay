@@ -1,5 +1,5 @@
-import ../eth_contracts
-import ../eth_macros
+import ../nimplay/ewasm_eei
+import ../nimplay/nimplay_macros
 
 
 import math

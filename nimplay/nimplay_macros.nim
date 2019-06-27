@@ -154,8 +154,6 @@ proc handle_contract_interface(stmts: NimNode): NimNode =
             discard
             # raise newException(ParserError, ">> Invalid stmt \"" &  getTypeInst(child) & "\" not supported in contract block")
 
-    echo function_signatures
-
     if filter(function_signatures, proc(x: FunctionSignature): bool = x.is_private).len == 0:
         raise newException(
             ParserError,
@@ -204,7 +202,6 @@ proc handle_contract_interface(stmts: NimNode): NimNode =
 
     for func_sig in function_signatures:
         if func_sig.is_private:
-            echo "!!!"
             continue
         echo "Building " & func_sig.method_sig
         var call_and_copy_block = nnkStmtList.newTree()

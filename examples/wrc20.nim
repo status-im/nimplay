@@ -1,7 +1,7 @@
 ## ewasm “WRC20” token contract coding challenge
 ## https://gist.github.com/axic/16158c5c88fbc7b1d09dfa8c658bc363
 
-import ../eth_contracts, endians
+import ../nimplay/ewasm_eei, endians
 
 proc do_balance() =
   if getCallDataSize() != 24:
