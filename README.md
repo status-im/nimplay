@@ -11,7 +11,7 @@ Nimplay is Domain Specific Language for writing smart contracts in Ethereum, usi
 ## Docs
 
 [Installation Docs](docs/installing.md) to get nimplay up and running.
-[Language Basics](docs/.md) to get with coding with nimplay.
+[Language Basics](docs/basics.md) to get coding with nimplay.
 
 ## License
 
