@@ -1,29 +1,8 @@
 import macros
 import strutils
 import stint
-import nimcrypto/keccak
-import nimcrypto/hash
-import nimcrypto/utils
-# import osproc
 
-
-
-type
-    VariableType* = object
-        name*: string
-        var_type*: string
-
-
-type
-    FunctionSignature* = object
-        name*: string
-        inputs*: seq[VariableType]
-        outputs*: seq[VariableType]
-        constant*: bool
-        payable*: bool
-        method_id*: string
-        method_sig*: string
-        is_private*: bool
+import ./utils, ./types
 
 
 proc generate_method_sig*(func_sig: FunctionSignature, v2_sig: bool = false): string =
@@ -52,7 +31,7 @@ proc generate_method_id*(func_sig: FunctionSignature): string =
     return getKHash(generate_method_sig(func_sig))[0..7]
 
 
-proc generate_function_signature*(proc_def: NimNode): FunctionSignature =
+proc generate_function_signature*(proc_def: NimNode, global_ctx: GlobalContext): FunctionSignature =
     expectKind(proc_def, nnkProcDef)
 
     var func_sig = FunctionSignature()
@@ -75,6 +54,7 @@ proc generate_function_signature*(proc_def: NimNode): FunctionSignature =
                         )
                     )
                 of nnkIdentDefs:
+                    check_valid_variable_name(param[0], global_ctx)
                     func_sig.inputs.add(
                         VariableType(
                             name: strVal(param[0]),
@@ -91,5 +71,6 @@ proc generate_function_signature*(proc_def: NimNode): FunctionSignature =
 
     func_sig.method_sig = generate_method_sig(func_sig)
     func_sig.method_id = generate_method_id(func_sig)
+    func_sig.line_info = lineInfoObj(proc_def)
 
     return func_sig

@@ -5,8 +5,11 @@ import tables
 
 proc is_message_sender(node: NimNode): bool =
     if node.kind == nnkDotExpr:
-        if node.len == 2 and node[0].strVal == "msg" and node[1].strVal == "sender":
-            return true
+        var correct_types = (node[0].kind, node[1].kind) == (nnkIdent, nnkIdent)
+        var correct_length = node.len == 2
+        if correct_types and correct_length:
+            if node[0].strVal == "msg" and node[1].strVal == "sender":
+                return true
     return false
 
 

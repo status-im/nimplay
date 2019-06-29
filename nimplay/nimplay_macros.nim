@@ -5,26 +5,9 @@ import strformat
 import tables
 import endians
 import sequtils
+import strutils
 
-import ./eth_abi_utils, ./builtin_keywords
-
-type uint256* = StUint[256]
-type int128* = StInt[128]
-type address* = array[20, byte]
-type bytes32* = array[32, byte]
-
-type ParserError = object of Exception
-
-type
-    LocalContext* = object
-        # Name of the function.
-        name: string
-        # Function signature, used for function selection and ABI encoding / decoding.
-        sig: FunctionSignature
-        # Global temp variables create at beginning of the function.
-        keyword_define_stmts: NimNode
-        # Map of temp variables that have to be replaced by.
-        global_keyword_map: Table[string, string]
+import ./function_signature, ./builtin_keywords, ./types, ./utils
 
 
 proc get_func_name(proc_def: NimNode): string =
@@ -126,22 +109,57 @@ proc get_local_output_type_conversion(tmp_result_name, tmp_result_converted_name
         raise newException(ParserError, fmt"Unknown '{var_type}' type supplied!")
 
 
-proc generate_context(proc_def: NimNode): LocalContext =
+proc generate_context(proc_def: NimNode, global_ctx: GlobalContext): LocalContext =
     var ctx = LocalContext()
     ctx.name = get_func_name(proc_def)
-    ctx.sig = generate_function_signature(proc_def)
+    ctx.sig = generate_function_signature(proc_def, global_ctx)
     (ctx.keyword_define_stmts, ctx.global_keyword_map) = get_keyword_defines(proc_def)
     return ctx
+
+
+proc handle_global_variables(var_section: NimNode, global_ctx :var GlobalContext)  =
+    var slot_number = 0.uint
+    for child in var_section:
+        case child.kind
+        of nnkIdentDefs:
+            if (child[0].kind, child[1].kind) != (nnkIdent, nnkIdent):
+                echo treeRepr(child)
+                raiseParserError(
+                    "Global variables need to be defined as 'var_name: var_type'",
+                    child
+                )
+            check_valid_variable_name(child[0], global_ctx)
+            var var_name = strVal(child[0])
+            var var_type = strVal(child[1])
+            if var_name in global_ctx.global_variables:
+                raiseParserError(
+                    fmt"Global variable '{var_name}' has already been defined",
+                    child
+                )
+            global_ctx.global_variables[var_name] = VariableType(
+                name: var_name,
+                var_type: var_type,
+                slot: slot_number
+            )
+            inc(slot_number)
+        else:
+            raiseParserError(
+                fmt"Unsupported statement in global var section",
+                child
+            )
 
 
 proc handle_contract_interface(stmts: NimNode): NimNode = 
     var main_out_stmts = newStmtList()
     var function_signatures = newSeq[FunctionSignature]()
+    var global_ctx = GlobalContext()
 
     for child in stmts:
         case child.kind:
+        of nnkVarSection:
+            handle_global_variables(child, global_ctx)
         of nnkProcDef:
-            var ctx = generate_context(child)
+            var ctx = generate_context(child, global_ctx)
             function_signatures.add(ctx.sig)
             var new_proc_def = replace_keywords(
                 ast_node=child,
@@ -296,10 +314,6 @@ proc handle_contract_interface(stmts: NimNode): NimNode =
                 param.var_type
             )
 
-            # if conversion_node.kind == nnkStmtList:
-            #     for child in conversion_node:
-            #         call_and_copy_block.add(child)
-            # else:
             call_and_copy_block.add(conversion_node)
 
             call_and_copy_block.add(
@@ -313,9 +327,9 @@ proc handle_contract_interface(stmts: NimNode): NimNode =
                 )
             )
         else:
-            raise newException(
-                Exception, 
-                "Can only handle function with a single variable output ATM."
+            raiseParserError(
+                "Can only handle functions with a single variable output ATM.",
+                func_sig.line_info
             )
 
         selector_CaseStmt.add(

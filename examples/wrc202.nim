@@ -1,9 +1,8 @@
 import ../nimplay/ewasm_eei
 import ../nimplay/nimplay_macros
+import ../nimplay/types
 
-
-import math
-import endians
+# import endians
 import macros
 import stint
 
@@ -15,6 +14,9 @@ expandMacros:
   #   a = (2^31-1).int32
   #   a += 1.int32
   #   return a.stuint(256)
+    var
+      a: uint256
+      b: address
 
     proc get_sender222(): address =
      if true:
@@ -27,9 +29,10 @@ expandMacros:
     proc publicGetSender*(): address =
       return msg.sender
 
+    proc addition(in_a: uint256, in_b: uint256): uint256 =
+      return in_a + in_b
+
     # getCaller(addr tmp_addr)
-    # proc addition(a: uint256, b: uint256): uint256 =
-    #   return a + b
 
     # blacklist storageStore
     # proc hello333(a: uint256): uint256 =
