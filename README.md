@@ -1,5 +1,7 @@
 # Nimplay
 
+[![Join the chat at https://gitter.im/status-im/nimplay](https://badges.gitter.im/status-im/nimplay.svg)](https://gitter.im/status-im/nimplay?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Disclaimer: WIP
 
 Nimplay is Domain Specific Language for writing smart contracts in Ethereum, using the Nim macro system.
