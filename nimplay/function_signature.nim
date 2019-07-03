@@ -65,6 +65,11 @@ proc generate_function_signature*(proc_def: NimNode, global_ctx: GlobalContext):
                     discard
                 else:
                     raise newException(Exception, "unknown param type" & treeRepr(child))
+        of nnkPragma:
+            if child[0].kind == nnkIdent and strVal(child[0]) == "payable":
+                func_sig.payable = true
+            else:
+                raiseParserError("Unsupported " & strVal(child[0]) & " pragma.", child)
         else:
             discard
             # raise newException(Exception, "unknown func type" & treeRepr(child))
@@ -74,3 +79,13 @@ proc generate_function_signature*(proc_def: NimNode, global_ctx: GlobalContext):
     func_sig.line_info = lineInfoObj(proc_def)
 
     return func_sig
+
+
+proc strip_pragmas*(proc_def: NimNode): NimNode =
+    var new_proc_def = copyNimNode(proc_def)  
+    for c in proc_def:
+        if c.kind != nnkPragma:
+            new_proc_def.add(copyNimTree(c))
+        else:
+            new_proc_def.add(newEmptyNode())
+    return new_proc_def

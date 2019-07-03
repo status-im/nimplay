@@ -25,6 +25,7 @@ proc get_func_name(proc_def: NimNode): string =
 proc get_byte_size_of(type_str: string): int =
     let BASE32_TYPES_NAMES: array = [
         "uint256",
+        "uint128",
         "int128",
         "address"
     ]
@@ -40,7 +41,8 @@ func get_bit_size_of(type_str: string): int =
 
 proc get_local_input_type_conversion(tmp_var_name, tmp_var_converted_name, var_type: string): (NimNode, NimNode) =
     case var_type
-    of "uint256":
+    of "uint256", "uint128":
+        echo var_type
         var convert_node = nnkLetSection.newTree(
             nnkIdentDefs.newTree(
                 newIdentNode(tmp_var_converted_name),
@@ -67,15 +69,22 @@ proc get_local_output_type_conversion(tmp_result_name, tmp_result_converted_name
     of "uint256":
         var ident_node = newIdentNode(tmp_result_converted_name)
         var conversion_node = nnkVarSection.newTree(
-            nnkIdentDefs.newTree(
-            newIdentNode(tmp_result_converted_name),
-            newEmptyNode(),
-                nnkDotExpr.newTree(
-                    newIdentNode(tmp_result_name),
-                    newIdentNode("toByteArrayBE")
+                nnkIdentDefs.newTree(
+                newIdentNode(tmp_result_converted_name),
+                newEmptyNode(),
+                    nnkDotExpr.newTree(
+                        newIdentNode(tmp_result_name),
+                        newIdentNode("toByteArrayBE")
+                    )
                 )
             )
-        )
+        return (ident_node, conversion_node)
+    of "uint128":
+        var ident_node = newIdentNode(tmp_result_converted_name)
+        var conversion_node = parseStmt(unindent(fmt"""
+            var {tmp_result_converted_name}: array[32, byte]
+            {tmp_result_converted_name}[16..31] = toByteArrayBE({tmp_result_name})
+        """))
         return (ident_node, conversion_node)
     of "address":
         var ident_node = newIdentNode(tmp_result_converted_name)
@@ -161,8 +170,9 @@ proc handle_contract_interface(stmts: NimNode): NimNode =
         of nnkProcDef:
             var ctx = generate_context(child, global_ctx)
             function_signatures.add(ctx.sig)
-            var new_proc_def = replace_keywords(
-                ast_node=child,
+            var new_proc_def = strip_pragmas(child)
+            new_proc_def = replace_keywords(
+                ast_node=new_proc_def,
                 global_keyword_map=ctx.global_keyword_map,
                 global_ctx=global_ctx
             )
@@ -344,11 +354,6 @@ proc handle_contract_interface(stmts: NimNode): NimNode =
     selector_CaseStmt.add(
         nnkElse.newTree(
             nnkStmtList.newTree(
-                # nnkCall.newTree(
-                #     newIdentNode("revert"),
-                #     newNilLit(),
-                #     newLit(0)
-                # )
                 nnkDiscardStmt.newTree(  # discard
                     newEmptyNode()
                 )
@@ -368,13 +373,6 @@ proc handle_contract_interface(stmts: NimNode): NimNode =
     # if getCallDataSize() < 4:
     #     revert(nil, 0)
 
-#     out_stmts.add(
-#         parseStmt("""
-# if getCallDataSize() < 4:
-#     revert(nil, 0)
-#         """
-#         )
-#     )
     var main_func = nnkStmtList.newTree(
         nnkProcDef.newTree(
             newIdentNode("main"),

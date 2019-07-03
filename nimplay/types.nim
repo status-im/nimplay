@@ -7,6 +7,7 @@ import sequtils
 
 type uint256* = StUint[256]
 type int128* = StInt[128]
+type uint128* = StUint[128]
 type address* = array[20, byte]
 type bytes32* = array[32, byte]
 
@@ -53,5 +54,5 @@ type ParserError* = object of Exception
 
 let
     KEYWORDS* {.compileTime.} = @["contract", "self"]
-    TYPE_NAMES* {.compileTime.} = @["address", "uint256", "bytes32"]
+    TYPE_NAMES* {.compileTime.} = @["address", "uint256", "bytes32", "int128", "uint128"]
     ALL_KEYWORDS* {.compileTime.} = concat(TYPE_NAMES, KEYWORDS)
