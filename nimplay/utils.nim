@@ -25,6 +25,23 @@ proc raiseParserError*(msg: string, node: NimNode) =
     raiseParserError(msg, line_info)
 
 
+proc valid_var_chars(var_name: string): bool =
+    var res = false
+    for c in var_name:
+        if c in {'a'..'z'}:
+            res = true
+        elif c in {'A'..'Z'}:
+            res = true
+        elif c == '_':
+            res = true
+        elif c in {'0'..'9'}:
+            res = true
+        else:
+            res = false
+            break
+    return res
+
+
 proc check_valid_variable_name*(node: NimNode, global_ctx: GlobalContext) =
     expectKind(node, nnkIdent)
     var name = strVal(node)
@@ -34,11 +51,7 @@ proc check_valid_variable_name*(node: NimNode, global_ctx: GlobalContext) =
         err_msg = "Variable name is same as a global variable, please chose another name."
     elif name in ALL_KEYWORDS:
         err_msg = "Variable name to similar to a keyword."
-
-    # TODO:
-    # elif not match(name, re"^[_a-zA-Z][a-zA-Z0-9_]*$"):
-    #     # prevent homograph attack.
-    #     err_msg = "Invalid variable name, only alphanumeric characters with underscore are supported."
-  
+    elif not valid_var_chars(name): # prevent homograph attack.
+        err_msg = "Invalid variable name, only alphanumeric characters with underscore are supported."
     if err_msg != "":
         raiseParserError(err_msg, node)
