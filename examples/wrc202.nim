@@ -3,34 +3,96 @@ import ../nimplay/nimplay_macros
 import ../nimplay/types
 
 # import endians
-import macros
+# import macros
 import stint
 
-expandMacros:
-  contract("MyContract"):
-
-  # proc becomeKing(): uint256 =
-  #   var a: int32
-  #   a = (2^31-1).int32
-  #   a += 1.int32
-  #   return a.stuint(256)
+# expandMacros:
+contract("MyContract"):
     var
       a: uint256
-      b: address
+      owner: address
 
-    proc get_sender222(): address =
-     if true:
-        return msg.sender
+    # proc default*() {.payable.}
+    #   ...
 
-    proc get_sender(): address =
-     if true:
-        return msg.sender
+    # proc publicGetSender(slot_number: uint256) =
+    #   discard
+      # dumpAstGen:
+      #   tmp_func_get_storage_owner()
+        # proc tmp_func_get_storage_owner(): address =
+        #   var
+        #     tmp: array[32, byte]
+        #     position: array[32, byte]
+        #     slot_number: uint32 = 1
+        #   position[0..3] = cast[array[4, byte]](slot_number)
+        #   storageLoad(position, addr tmp)
+        #   var output: address
+        #   output[0..20] = tmp[0..20]
+        #   return output
 
-    proc publicGetSender*(): address =
-      return msg.sender
+    proc get_storage*(): uint256 =
+      return self.a
 
-    proc addition(in_a: uint256, in_b: uint256): uint256 =
-      return in_a + in_b
+    proc set_storage*(in_a: uint256) =
+      self.a = in_a
+
+    # proc set_storage*(a: uint256) =
+    #   discard
+
+    # proc set_storage*() =
+    #     var
+    #       pos = 0.stuint(32).toByteArrayBE
+    #       value = 999999999999999.stuint(256).toByteArrayBE
+    #     storageStore(pos, addr value)
+
+    #   return msg.sender
+
+    # proc tmp_func_get_storage_owner(slot_number: uint256): address =
+    #   var tmp: array[32, byte]
+    #   var position = slot_number.toByteArrayBE
+    #   storageLoad(position, addr tmp)
+    #   var output: address
+    #   output[0..19] = tmp[12..31]
+    #   return output
+
+    # proc addition(in_a: uint256, in_b: uint256): uint256 =
+    #   return in_a + in_b
+
+    # proc get*(): uint256 =
+    #   var tmp: array[32, byte]
+    #   var pos = 0.stuint(32).toByteArrayBE
+    #   storageLoad(pos, addr tmp)
+    #   return Uint256.fromBytesBE(tmp)
+
+    # proc set*() =
+    #   var tmp = 556677.stuint(256).toByteArrayBE
+    #   var pos = 0.stuint(32).toByteArrayBE
+    #   storageStore(pos, addr tmp)
+
+    # proc get_storage*(slot_number: uint256): uint256 =
+    #   var tmp: uint256
+    #   var pos = cast[bytes32](slot_number)
+    #   storageLoad(pos, addr tmp)
+    #   return tmp
+
+    # proc set_storage*(slot_number: uint256, value: uint256) =
+    #   var tmp: array[32, byte] = value.toByteArrayBE
+    #   var pos = cast[bytes32](slot_number)
+    #   storageStore(pos, addr tmp)
+    
+    # proc setOwner(in_owner: address) =
+    #   self.owner = in_owner
+
+    # proc getOwner(): address =
+    #   return self.owner
+
+    # proc get_sender222(): address =
+    #  if true:
+    #     return msg.sender
+
+    # proc get_sender(): address =
+    #  if true:
+    #     return msg.sender
 
     # getCaller(addr tmp_addr)
 

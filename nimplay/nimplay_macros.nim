@@ -113,12 +113,12 @@ proc generate_context(proc_def: NimNode, global_ctx: GlobalContext): LocalContex
     var ctx = LocalContext()
     ctx.name = get_func_name(proc_def)
     ctx.sig = generate_function_signature(proc_def, global_ctx)
-    (ctx.keyword_define_stmts, ctx.global_keyword_map) = get_keyword_defines(proc_def)
+    (ctx.keyword_define_stmts, ctx.global_keyword_map) = get_keyword_defines(proc_def, global_ctx)
     return ctx
 
 
 proc handle_global_variables(var_section: NimNode, global_ctx :var GlobalContext)  =
-    var slot_number = 0.uint
+    var slot_number = 0
     for child in var_section:
         case child.kind
         of nnkIdentDefs:
@@ -163,7 +163,8 @@ proc handle_contract_interface(stmts: NimNode): NimNode =
             function_signatures.add(ctx.sig)
             var new_proc_def = replace_keywords(
                 ast_node=child,
-                global_keyword_map=ctx.global_keyword_map
+                global_keyword_map=ctx.global_keyword_map,
+                global_ctx=global_ctx
             )
             # Insert global defines.
             new_proc_def[6].insert(0, ctx.keyword_define_stmts)
@@ -172,10 +173,10 @@ proc handle_contract_interface(stmts: NimNode): NimNode =
             discard
             # raise newException(ParserError, ">> Invalid stmt \"" &  getTypeInst(child) & "\" not supported in contract block")
 
-    if filter(function_signatures, proc(x: FunctionSignature): bool = x.is_private).len == 0:
+    if filter(function_signatures, proc(x: FunctionSignature): bool = not x.is_private).len == 0:
         raise newException(
             ParserError,
-            "No public functions have defined, use * postfix to annotate public functions."
+            "No public functions have been defined, use * postfix to annotate public functions. e.g. proc myfunc*(a: uint256)"
         )
 
     # Build Main Entrypoint.
@@ -404,6 +405,6 @@ macro contract*(contract_name: string, proc_def: untyped): untyped =
     # echo treeRepr(proc_def)
     expectKind(proc_def, nnkStmtList)
     var stmtlist = handle_contract_interface(proc_def)
-    # echo "After:"
-    # echo treeRepr(stmtlist)
+    echo "Final Contract Code:"
+    echo repr(stmtlist)
     return stmtlist

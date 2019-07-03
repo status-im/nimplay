@@ -16,7 +16,7 @@ type
     VariableType* = object
         name*: string
         var_type*: string
-        slot*: uint
+        slot*: int64
 
 type
     FunctionSignature* = object
@@ -52,6 +52,6 @@ type ParserError* = object of Exception
 # Nimplay constants.
 
 let
-    KEYWORDS* {.compileTime.} = @["contract"]
-    TYPE_NAMES* {.compileTime.} = @["address", "uint256"]
+    KEYWORDS* {.compileTime.} = @["contract", "self"]
+    TYPE_NAMES* {.compileTime.} = @["address", "uint256", "bytes32"]
     ALL_KEYWORDS* {.compileTime.} = concat(TYPE_NAMES, KEYWORDS)
