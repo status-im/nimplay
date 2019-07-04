@@ -30,15 +30,19 @@ contract("MyContract"):
         #   output[0..20] = tmp[0..20]
         #   return output
 
+    # proc get_value*(): uint128 {.payable.} =
+    #   var ba: array[16, byte]
+    #   getCallValue(addr ba)
+    #   var val: Stuint[128]
+    #   {.pragma: restrict, codegenDecl: "$# __restrict $#".}
+    #   let r_ptr {.restrict.} = cast[ptr array[128, byte]](addr val)
+    #   for i, b in ba:
+    #     r_ptr[i] = b
+    #   return val
+
     proc get_value*(): uint128 {.payable.} =
-      var ba: array[16, byte]
-      getCallValue(addr ba)
-      var val: Stuint[128]
-      {.pragma: restrict, codegenDecl: "$# __restrict $#".}
-      let r_ptr {.restrict.} = cast[ptr array[128, byte]](addr val)
-      for i, b in ba:
-        r_ptr[i] = b
-      return val
+      return msg.value
+
       # var b: array[16, byte]
       # var N = 16
       # for i in 0 ..< N:
@@ -47,7 +51,7 @@ contract("MyContract"):
 
     proc test_out*(): uint128 =
       return 1222233344.stuint(128)
-    
+
     proc test_out_256*(): uint256 =
         return 1222233344.stuint(256)
 

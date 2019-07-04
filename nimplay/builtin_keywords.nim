@@ -18,7 +18,13 @@ proc is_dot_variable(node: NimNode): bool =
 
 proc is_message_sender(node: NimNode): bool =
     if is_dot_variable(node) and node[0].strVal == "msg" and node[1].strVal == "sender":
-            return true
+        return true
+    return false
+
+
+proc is_message_value(node: NimNode): bool =
+    if is_dot_variable(node) and node[0].strVal == "msg" and node[1].strVal == "value":
+        return true
     return false
 
 
@@ -44,6 +50,8 @@ proc has_self_assignment(node: NimNode, global_ctx: GlobalContext): bool =
 proc is_keyword(node: NimNode, global_ctx: GlobalContext): (bool, string) =
     if is_message_sender(node):
         return (true, "msg.sender")
+    if is_message_value(node):
+        return (true, "msg.value")
     elif has_self_assignment(node, global_ctx):
         return (true, "set_self." & node[0][1].strVal)
     elif has_self(node, global_ctx):
@@ -87,6 +95,20 @@ proc generate_defines(keywords: seq[string], global_ctx: GlobalContext): (NimNod
         )
         tmp_vars["msg.sender"] = tmp_var_name
 
+    if "msg.value" in keywords:
+        var tmp_func_name = fmt"msg_value_func"
+        stmts.add(parseStmt("proc " & tmp_func_name & """(): uint128 =
+            var ba: array[16, byte]
+            getCallValue(addr ba)
+            var val: Stuint[128]
+            {.pragma: restrict, codegenDecl: "$# __restrict $#".}
+            let r_ptr {.restrict.} = cast[ptr array[128, byte]](addr val)
+            for i, b in ba:
+              r_ptr[i] = b
+            return val
+        """))
+        tmp_vars["msg.value"] = tmp_func_name
+
     for kw in keywords:
         if kw.startsWith("set_self"):
             var (new_proc, new_proc_name) = generate_storage_set_func(kw, global_ctx)
@@ -112,22 +134,40 @@ proc get_keyword_defines*(proc_def: NimNode, global_ctx: GlobalContext): (NimNod
     return (global_define_stmts, global_keyword_map)
 
 
+proc get_next_storage_node(kw_key_name: string, global_keyword_map: Table[string, string], current_node: NimNode): NimNode =
+    if kw_key_name.startsWith("self."):
+        return nnkCall.newTree(
+            newIdentNode(global_keyword_map[kw_key_name])
+        )
+    elif kw_key_name.startsWith("set_self."):
+        return nnkCall.newTree(
+            newIdentNode(global_keyword_map[kw_key_name]),
+            current_node[1]
+        )
+    else:
+        raise newException(ParserError, "Unknown global self keyword")
+
+
 proc replace_keywords*(ast_node: NimNode, global_keyword_map: Table[string, string], global_ctx: GlobalContext): NimNode  =
+    var
+        TMP_VAR_KEYWORDS = @["msg.sender"]
+        TMP_FUNC_KEYWORDS = @["msg.value"]
+
     var res_node = copyNimNode(ast_node)
     for child in ast_node:
         var next: NimNode
         let (is_kw, kw_key_name) = is_keyword(child, global_ctx)
-        if is_kw and kw_key_name.startsWith("self."):
-            next = nnkCall.newTree(
-                newIdentNode(global_keyword_map[kw_key_name])
-            )
-        elif is_kw and kw_key_name.startsWith("set_self."):
-            next = nnkCall.newTree(
-                newIdentNode(global_keyword_map[kw_key_name]),
-                child[1]
-            )
-        elif is_kw:
-            next = newIdentNode(global_keyword_map[kw_key_name])
+        if is_kw:
+            if "self." in kw_key_name:
+                next = get_next_storage_node(kw_key_name, global_keyword_map, child)
+            elif kw_key_name in TMP_FUNC_KEYWORDS:
+                next = nnkCall.newTree(
+                    newIdentNode(global_keyword_map[kw_key_name])
+                )
+            elif kw_key_name in TMP_VAR_KEYWORDS:
+                next = newIdentNode(global_keyword_map[kw_key_name])
+            else:
+                raise newException(ParserError, "No replacement specified for " & kw_key_name & " keyword")
         else:
             next = child
         res_node.add(replace_keywords(next, global_keyword_map, global_ctx))
