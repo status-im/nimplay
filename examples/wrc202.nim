@@ -11,6 +11,7 @@ contract("MyContract"):
     var
       a: uint256
       owner: address
+      name: bytes32
 
     # proc default*() {.payable.}
     #   ...
@@ -40,8 +41,14 @@ contract("MyContract"):
     #     r_ptr[i] = b
     #   return val
 
-    proc ret_bytes32*(in_a: bytes32): bytes32 =
-        return in_a
+    # proc ret_bytes32*(in_a: bytes32): bytes32 =
+    #   return in_a
+
+    proc set_bytes32*(in_a: bytes32) =
+      self.name = in_a
+
+    proc get_bytes32*(): bytes32 =
+      return self.name
 
     # proc get_value*(): uint128 {.payable.} =
     #   return msg.value
