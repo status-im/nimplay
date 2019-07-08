@@ -40,8 +40,11 @@ contract("MyContract"):
     #     r_ptr[i] = b
     #   return val
 
-    proc get_value*(): uint128 {.payable.} =
-      return msg.value
+    proc ret_bytes32*(in_a: bytes32): bytes32 =
+        return in_a
+
+    # proc get_value*(): uint128 {.payable.} =
+    #   return msg.value
 
       # var b: array[16, byte]
       # var N = 16
@@ -49,11 +52,11 @@ contract("MyContract"):
       #   b[N-1 - i] = a[i]
       # return Uint128.fromBytesBE(b)
 
-    proc test_out*(): uint128 =
-      return 1222233344.stuint(128)
+    # proc test_out*(aaa: uint128): uint128 =
+    #   return 1222233344.stuint(128)
 
-    proc test_out_256*(): uint256 =
-        return 1222233344.stuint(256)
+    # proc test_out_256*(): uint256 =
+    #     return 1222233344.stuint(256)
 
     # proc get_storage*(): uint256 =
     #   return self.a

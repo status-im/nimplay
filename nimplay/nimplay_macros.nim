@@ -27,7 +27,8 @@ proc get_byte_size_of(type_str: string): int =
         "uint256",
         "uint128",
         "int128",
-        "address"
+        "address",
+        "bytes32"
     ]
     if type_str in BASE32_TYPES_NAMES:
         return 32
@@ -58,6 +59,8 @@ proc get_local_input_type_conversion(tmp_var_name, tmp_var_converted_name, var_t
         )
         var ident_node = newIdentNode(tmp_var_converted_name)
         return (ident_node, convert_node)
+    of "bytes32":
+        return (newIdentNode(tmp_var_name), newEmptyNode())
     of "address":
         return (newEmptyNode(), newEmptyNode())
     else:
@@ -114,6 +117,8 @@ proc get_local_output_type_conversion(tmp_result_name, tmp_result_converted_name
         )
         return (ident_node, conversion_node)
         # return (newIdentNode(tmp_result_name), newEmptyNode())
+    of "bytes32":
+        return (newIdentNode(tmp_result_name), newEmptyNode())
     else:
         raise newException(ParserError, fmt"Unknown '{var_type}' type supplied!")
 
@@ -228,7 +233,6 @@ proc handle_contract_interface(stmts: NimNode): NimNode =
     )
 
     # Build function selector.
-
     for func_sig in function_signatures:
         if func_sig.is_private:
             continue
@@ -276,8 +280,10 @@ proc handle_contract_interface(stmts: NimNode): NimNode =
                 tmp_var_converted_name,
                 param.var_type
             )
+            echo treeRepr(ident_node)
             if  not (ident_node.kind == nnkEmpty):
-                call_and_copy_block.add(convert_node)
+                if not (convert_node.kind == nnkEmpty):
+                    call_and_copy_block.add(convert_node)
                 call_to_func.add(ident_node)
             start_offset += static_param_size
 
