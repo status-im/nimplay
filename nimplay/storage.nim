@@ -28,9 +28,12 @@ proc generate_storage_get_func*(storage_keword: string, global_ctx: GlobalContex
         proc {new_proc_name}(): uint128 =
             var
                 tmp: array[32, byte]
+                tmp_ba: array[16, byte]
                 pos = {$slot_number}.stuint(32).toByteArrayBE
             storageLoad(pos, addr tmp)
-            return Uint128.fromBytesBE(tmp)
+            for i in 0..15:
+                tmp_ba[i] = tmp[i]
+            return Uint128.fromBytesBE(tmp_ba)
         """)
         return (new_proc, new_proc_name)
     elif var_info.var_type == "address":
@@ -84,7 +87,9 @@ proc generate_storage_set_func*(storage_keyword: string, global_ctx: GlobalConte
             var
                 tmp: array[32, byte]
                 pos = {$slot_number}.stuint(32).toByteArrayBE
-            # tmp[0..15] = value.toByteArrayBE
+                tmp_ba = value.toByteArrayBE
+            for i in 0..15:
+                tmp[i] = tmp_ba[i]
             storageStore(pos, addr tmp)
         """)
         return (new_proc, new_proc_name)
