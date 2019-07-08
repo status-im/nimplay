@@ -26,7 +26,6 @@ proc get_byte_size_of(type_str: string): int =
     let BASE32_TYPES_NAMES: array = [
         "uint256",
         "uint128",
-        "int128",
         "address",
         "bytes32"
     ]
@@ -145,6 +144,7 @@ proc handle_global_variables(var_section: NimNode, global_ctx :var GlobalContext
             check_valid_variable_name(child[0], global_ctx)
             var var_name = strVal(child[0])
             var var_type = strVal(child[1])
+            # echo var_name & " -> " & var_type
             if var_name in global_ctx.global_variables:
                 raiseParserError(
                     fmt"Global variable '{var_name}' has already been defined",

@@ -23,6 +23,31 @@ proc generate_storage_get_func*(storage_keword: string, global_ctx: GlobalContex
             return Uint256.fromBytesBE(tmp)
         """)
         return (new_proc, new_proc_name)
+    elif var_info.var_type == "uint128":
+        var new_proc = parseStmt(fmt"""
+        proc {new_proc_name}(): uint128 =
+            var
+                tmp: array[32, byte]
+                pos = {$slot_number}.stuint(32).toByteArrayBE
+            storageLoad(pos, addr tmp)
+            return Uint128.fromBytesBE(tmp)
+        """)
+        return (new_proc, new_proc_name)
+    elif var_info.var_type == "address":
+        var new_proc = parseStmt(fmt"""
+        proc {new_proc_name}(): address =
+            var
+                tmp: array[32, byte]
+                pos = {$slot_number}.stuint(32).toByteArrayBE
+            storageLoad(pos, addr tmp)
+            var out_var: address 
+            # out_var[0..19] = tmp[12..31]
+            for i, b in tmp:
+                if i >= 12:
+                    out_var[i - 12] = b
+            return out_var
+        """)
+        return (new_proc, new_proc_name)
     elif var_info.var_type == "bytes32":
         var new_proc = parseStmt(fmt"""
         proc {new_proc_name}(): bytes32 =
@@ -34,7 +59,7 @@ proc generate_storage_get_func*(storage_keword: string, global_ctx: GlobalContex
         """)
         return (new_proc, new_proc_name)
     else:
-        raise newException(ParserError, "Only uint256 & bytes32 storage supported at the moment.")
+        raise newException(ParserError, var_info.var_type & " storage is not supported at the moment.")
 
 
 proc generate_storage_set_func*(storage_keyword: string, global_ctx: GlobalContext): (NimNode, string) =
@@ -53,12 +78,33 @@ proc generate_storage_set_func*(storage_keyword: string, global_ctx: GlobalConte
             storageStore(pos, addr tmp)
         """)
         return (new_proc, new_proc_name)
+    elif var_info.var_type == "uint128":
+        var new_proc = parseStmt(fmt"""
+        proc {new_proc_name}(value: {var_info.var_type}) =
+            var
+                tmp: array[32, byte]
+                pos = {$slot_number}.stuint(32).toByteArrayBE
+            # tmp[0..15] = value.toByteArrayBE
+            storageStore(pos, addr tmp)
+        """)
+        return (new_proc, new_proc_name)
+    elif var_info.var_type == "address":
+        var new_proc = parseStmt(fmt"""
+        proc {new_proc_name}(value: address) =
+            var
+                tmp: array[32, byte]
+                pos = {$slot_number}.stuint(32).toByteArrayBE
+            for i, b in value:
+                tmp[12 + i] = b
+            storageStore(pos, addr tmp)
+        """)
+        return (new_proc, new_proc_name)
     elif var_info.var_type == "bytes32":
         var new_proc = parseStmt(fmt"""
-        proc {new_proc_name}(value:bytes32) =
+        proc {new_proc_name}(value: bytes32) =
             var pos = {$slot_number}.stuint(32).toByteArrayBE
             storageStore(pos, unsafeAddr value)
         """)
         return (new_proc, new_proc_name)
     else:
-        raise newException(ParserError, "Only uint256 & bytes32 storage supported at the moment.")
+        raise newException(ParserError, var_info.var_type & " storage is not supported at the moment.")
