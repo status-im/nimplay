@@ -6,47 +6,60 @@ import sequtils
 # Nimplay types.
 
 type
-    uint256* = StUint[256]
-    int128* = StInt[128]
-    uint128* = StUint[128]
-    address* = array[20, byte]
-    bytes32* = array[32, byte]
-    wei_value* = uint128
+  uint256* = StUint[256]
+  int128* = StInt[128]
+  uint128* = StUint[128]
+  address* = array[20, byte]
+  bytes32* = array[32, byte]
+  wei_value* = uint128
 
 # Nimplay structs.
 
 type
-    VariableType* = object
-        name*: string
-        var_type*: string
-        slot*: int64
+  VariableType* = object
+    name*: string
+    var_type*: string
+    slot*: int64
 
 type
-    FunctionSignature* = object
-        name*: string
-        inputs*: seq[VariableType]
-        outputs*: seq[VariableType]
-        constant*: bool
-        payable*: bool
-        method_id*: string
-        method_sig*: string
-        is_private*: bool
-        line_info*: LineInfo
+  EventType* = object
+    name*: string
+    var_type*: string
+    indexed*: bool
 
 type
-    LocalContext* = object
-        # Name of the function.
-        name*: string
-        # Function signature, used for function selection and ABI encoding / decoding.
-        sig*: FunctionSignature
-        # Global temp variables create at beginning of the function.
-        keyword_define_stmts*: NimNode
-        # Map of temp variables that have to be replaced by.
-        global_keyword_map*: Table[string, string]
+  FunctionSignature* = object
+    name*: string
+    inputs*: seq[VariableType]
+    outputs*: seq[VariableType]
+    constant*: bool
+    payable*: bool
+    method_id*: string
+    method_sig*: string
+    is_private*: bool
+    line_info*: LineInfo
 
 type
-    GlobalContext* = object
-        global_variables*: Table[string, VariableType]
+  EventSignature* = object
+    name*: string
+    inputs*: seq[EventType]
+    # definition*: NimNode
+
+type
+  LocalContext* = object
+    # Name of the function.
+    name*: string
+    # Function signature, used for function selection and ABI encoding / decoding.
+    sig*: FunctionSignature
+    # Global temp variables create at beginning of the function.
+    keyword_define_stmts*: NimNode
+    # Map of temp variables that have to be replaced by.
+    global_keyword_map*: Table[string, string]
+
+type
+  GlobalContext* = object
+    global_variables*: Table[string, VariableType]
+    events*: Table[string, EventSignature]
 
 # Exceptions.
 
@@ -55,6 +68,6 @@ type ParserError* = object of Exception
 # Nimplay constants.
 
 let
-    KEYWORDS* {.compileTime.} = @["contract", "self"]
-    TYPE_NAMES* {.compileTime.} = @["address", "uint256", "bytes32", "int128", "uint128"]
-    ALL_KEYWORDS* {.compileTime.} = concat(TYPE_NAMES, KEYWORDS)
+  KEYWORDS* {.compileTime.} = @["contract", "self"]
+  TYPE_NAMES* {.compileTime.} = @["address", "uint256", "bytes32", "int128", "uint128"]
+  ALL_KEYWORDS* {.compileTime.} = concat(TYPE_NAMES, KEYWORDS)

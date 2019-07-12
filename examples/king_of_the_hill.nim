@@ -5,18 +5,18 @@ import stint
 
 
 contract("KingOfTheHill"):
-
     # Globals
     var
         king_name: bytes32
         king_addr: address
         king_value: wei_value
-        king_else: uint128
-    
-    proc KingEvent(id {.topic.}: uint256, name: bytes32, value: uint128) {.event.}
+        king_else: uint128 
+    # Events
+    # proc shouldFail2(a: uint256): val {.event.} 
+    # proc KingEvent(id {.indexed.}: uint256, name: bytes32, value: uint128) {.event.}
+    proc Transferred(fromm: address, value: uint128) {.event.}
 
-    proc Transferred(_from: address, value: uint128) {.event.}
-
+    # Methods
     proc becomeKing*(name: bytes32) {.self,msg,payable,log.} =
 
         # proc log__KingEvent(name: bytes32, value: uint128):
@@ -30,7 +30,7 @@ contract("KingOfTheHill"):
             self.king_value = msg.value
             # transfer funds.
             # Transfer()
-            log.KingEvent()
+            # log.KingEvent()
 
     proc getKing*(): bytes32 = 
         self.king_name
