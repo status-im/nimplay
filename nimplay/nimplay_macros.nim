@@ -22,23 +22,6 @@ proc get_func_name(proc_def: NimNode): string =
   return func_name
 
 
-proc get_byte_size_of(type_str: string): int =
-  let BASE32_TYPES_NAMES: array = [
-    "uint256",
-    "uint128",
-    "address",
-    "bytes32"
-  ]
-  if type_str in BASE32_TYPES_NAMES:
-    return 32
-  else:
-    raise newException(ParserError, fmt"Unknown '{type_str}' type supplied!")
-
-
-func get_bit_size_of(type_str: string): int =
-  get_byte_size_of(type_str) * 8
-
-
 proc get_local_input_type_conversion(tmp_var_name, tmp_var_converted_name, var_type: string): (NimNode, NimNode) =
   case var_type
   of "uint256", "uint128":
@@ -175,7 +158,7 @@ proc handle_event_defines(event_def: NimNode, global_ctx: var GlobalContext) =
     raiseParserError(fmt"Event '{event_name}' has already been defined.", event_def)
   var event_sig = EventSignature(
     name: event_name,
-    # definition: event_def
+    definition: event_def
   )
 
   for child in event_def:

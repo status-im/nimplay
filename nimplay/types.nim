@@ -43,7 +43,7 @@ type
   EventSignature* = object
     name*: string
     inputs*: seq[EventType]
-    # definition*: NimNode
+    definition*: NimNode
 
 type
   LocalContext* = object
@@ -68,6 +68,6 @@ type ParserError* = object of Exception
 # Nimplay constants.
 
 let
-  KEYWORDS* {.compileTime.} = @["contract", "self"]
+  KEYWORDS* {.compileTime.} = @["contract", "self", "log"]
   TYPE_NAMES* {.compileTime.} = @["address", "uint256", "bytes32", "int128", "uint128"]
   ALL_KEYWORDS* {.compileTime.} = concat(TYPE_NAMES, KEYWORDS)

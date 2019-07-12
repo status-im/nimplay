@@ -1,9 +1,9 @@
-import macros
-import strutils
-import tables
-import re
+import 
+    macros, strformat, strutils,
+    tables
 
-import ./types
+import
+    ./types
 
 
 proc raiseParserError*(in_msg: string, line_info: LineInfo) =
@@ -55,3 +55,19 @@ proc check_valid_variable_name*(node: NimNode, global_ctx: GlobalContext) =
         err_msg = "Invalid variable name, only alphanumeric characters with underscore are supported."
     if err_msg != "":
         raiseParserError(err_msg, node)
+
+
+proc get_byte_size_of*(type_str: string): int =
+  let BASE32_TYPES_NAMES: array = [
+    "uint256",
+    "uint128",
+    "address",
+    "bytes32"
+  ]
+  if type_str in BASE32_TYPES_NAMES:
+    return 32
+  else:
+    raise newException(ParserError, fmt"Unknown '{type_str}' type supplied!")
+
+func get_bit_size_of(type_str: string): int =
+  get_byte_size_of(type_str) * 8
