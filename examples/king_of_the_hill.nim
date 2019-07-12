@@ -15,6 +15,7 @@ contract("KingOfTheHill"):
     # proc shouldFail2(a: uint256): val {.event.} 
     # proc KingEvent(id {.indexed.}: uint256, name: bytes32, value: uint128) {.event.}
     proc Transferred(fromm: address, value: uint128) {.event.}
+    proc Transferred2(fromm: address, value: uint128) {.event.}
 
     # Methods
     proc becomeKing*(name: bytes32) {.self,msg,payable,log.} =

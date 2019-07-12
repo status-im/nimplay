@@ -167,6 +167,8 @@ proc handle_event_defines(event_def: NimNode, global_ctx: var GlobalContext) =
   expectKind(event_def, nnkProcDef)
   if event_def[6].kind != nnkEmpty:
     raiseParserError("Event definition expect no function bodies", event_def)
+  if not (event_def[4].kind == nnkPragma and strVal(event_def[4][0]) == "event"):
+    raiseParserError("Events require event pragma e.g. 'proc EventName(a: uint256) {.event.}'", event_def)
 
   var event_name = strVal(event_def[0])
   if event_name in global_ctx.events:
@@ -175,6 +177,7 @@ proc handle_event_defines(event_def: NimNode, global_ctx: var GlobalContext) =
     name: event_name,
     # definition: event_def
   )
+
   for child in event_def:
     if child.kind == nnkFormalParams:
       var params = child
