@@ -177,10 +177,20 @@ proc handle_event_defines(event_def: NimNode, global_ctx: var GlobalContext) =
   global_ctx.events[event_name] = event_sig
 
 
+proc get_util_functions(): NimNode =
+  parseStmt("""
+    template copy_into_ba(to_ba: var untyped, offset: int, from_ba: untyped) =
+      for i, x in from_ba:
+        to_ba[offset + i] = x
+  """)
+
+
 proc handle_contract_interface(stmts: NimNode): NimNode = 
   var main_out_stmts = newStmtList()
   var function_signatures = newSeq[FunctionSignature]()
   var global_ctx = GlobalContext()
+
+  main_out_stmts.add(get_util_functions())
 
   for child in stmts:
     case child.kind:

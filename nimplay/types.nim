@@ -43,6 +43,7 @@ type
   EventSignature* = object
     name*: string
     inputs*: seq[EventType]
+    outputs*: seq[EventType]
     definition*: NimNode
 
 type

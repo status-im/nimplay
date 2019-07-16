@@ -5,7 +5,7 @@ import stint
 import ./utils, ./types
 
 
-proc generate_method_sig*(func_sig: FunctionSignature, v2_sig: bool = false): string =
+template generate_method_sig*(func_sig: untyped, v2_sig: bool = false): string =
   var inputs: seq[string]
   for input in func_sig.inputs:
     inputs.add(input.var_type)
@@ -15,10 +15,10 @@ proc generate_method_sig*(func_sig: FunctionSignature, v2_sig: bool = false): st
     for output in func_sig.outputs:
       outputs.add(output.var_type)
     method_str = method_str & ":(" & join(outputs, ",") & ")"
-  return method_str
+  method_str
 
 
-proc getKHash(inp: string): string {.compileTime.} =
+proc getKHash*(inp: string): string {.compileTime.} =
   let exec_string = "../tools/k256_sig \"" & inp & "\""
   let outp_shell = staticExec(exec_string)
   return outp_shell
