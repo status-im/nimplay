@@ -18,7 +18,7 @@ contract("KingOfTheHill"):
   proc Transferred2(fromm: address, value: uint128) {.event.}
 
   # Methods
-  proc becomeKing*(name: bytes32) {.self,msg,payable,log.} =
+  proc becomeKing*(name: bytes32) {.payable.} =
     log.Transferred(msg.sender, msg.value)
 
     # proc log__KingEvent(name: bytes32, value: uint128):
