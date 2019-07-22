@@ -43,11 +43,14 @@ proc has_self(node: NimNode, global_ctx: GlobalContext): bool =
 proc is_log_statement(node: NimNode, global_ctx: GlobalContext): bool =
   if node.kind == nnkCall:
     if is_dot_variable(node[0]) and strVal(node[0][0]) == "log":
-      if strVal(node[0][1]) in global_ctx.events:
-        return true
+      var
+        func_name = strVal(node[0][1])
+      if func_name in global_ctx.events:
+        for func_name in global_ctx.events.keys():
+          return true
       else:
         raiseParserError(
-          fmt"Invalid log statement {strVal(node[1])} has no event definition.",
+          fmt"Invalid log statement {func_name}, event was not defined.",
           node
         )
 

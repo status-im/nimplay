@@ -156,24 +156,46 @@ proc handle_event_defines(event_def: NimNode, global_ctx: var GlobalContext) =
   var event_name = strVal(event_def[0])
   if event_name in global_ctx.events:
     raiseParserError(fmt"Event '{event_name}' has already been defined.", event_def)
-  var event_sig = EventSignature(
-    name: event_name,
-    definition: event_def
-  )
-
+  var 
+    event_sig = EventSignature(
+      name: event_name,
+      definition: event_def
+    )
+    param_position = 0
+  
   for child in event_def:
     if child.kind == nnkFormalParams:
       var params = child
       for param in params:
         if param.kind == nnkIdentDefs:
-          check_valid_variable_name(param[0], global_ctx)
-          var param_name = strVal(param[0])
-          event_sig.inputs.add(EventType(
-            name: param_name,
-            var_type: strVal(param[1])
-          ))
+          if param[0].kind == nnkPragmaExpr and param[0][1].kind == nnkPragma:
+            var
+              pragma_expr = param[0][1][0]
+            if pragma_expr.kind != nnkIdent or strVal(pragma_expr) != "indexed":
+                raiseParserError("Unsupported pragma", pragma_expr)
+            # echo treeRepr(param)
+            event_sig.inputs.add(EventType(
+              name: strVal(param[0][0]),
+              var_type: strVal(param[1]),
+              indexed: true,
+              param_position: param_position
+            ))
+          elif param[0].kind == nnkIdent:
+            check_valid_variable_name(param[0], global_ctx)
+            var param_name = strVal(param[0])
+            event_sig.inputs.add(EventType(
+              name: param_name,
+              var_type: strVal(param[1]),
+              indexed: false,
+              param_position: param_position
+            ))
+          else:
+            raiseParserError("Unsupported event parameter type", params)
+          param_position += 1
   if len(event_sig.inputs) == 0:
     raiseParserError("Event requires parameters", event_def)
+  if filter(event_sig.inputs, proc(x: EventType): bool = x.indexed).len > 3:
+    raiseParserError("Can only have 3 indexed parameters", event_def)
   global_ctx.events[event_name] = event_sig
 
 

@@ -28,26 +28,54 @@ proc get_converter_ident(param_name, param_type: string): (int, string) =
     (0, param_name)
 
 
-proc get_param_copiers(proc_def: NimNode, buffer_name: string): NimNode =
+proc get_indexed_param_locations(event_sig: EventSignature): seq[int] =
+  var
+    locations: seq[int]
+    i = 0
+  for event in event_sig.inputs:
+    if event.indexed:
+      locations.add(event.param_position)
+    i += 1
+  locations  # return
+
+
+proc get_param_copiers(event_sig: EventSignature, buffer_name: string): (NimNode, Table[string, int]) =
   var
     copy_stmts = newStmtList()
     current_abi_offset = 0
-  for child in proc_def:
-    if child.kind == nnkFormalParams:
-      for param in child:
-        if param.kind == nnkIdentDefs:
-          var
-            type_offset = 0
-            param_type = strVal(param[1])
-            param_name = strVal(param[0])
-          (type_offset, param_name) = get_converter_ident(param_name, param_type)
-          copy_stmts.add(
-            parseStmt(fmt"""
-            copy_into_ba({buffer_name}, {32 + current_abi_offset + type_offset}, {param_name})
-            """)
-          )
-          current_abi_offset += get_byte_size_of(strVal(param[1]))
-  copy_stmts
+    position_map: Table[string, int]
+  for event_param in event_sig.inputs:
+    var (type_offset, converted_param_name) = get_converter_ident(event_param.name, event_param.var_type)
+    var abi_bytearr_offset = 32 + current_abi_offset + type_offset
+    position_map[event_param.name] = 32 + current_abi_offset
+    copy_stmts.add(
+      parseStmt(
+      fmt"""
+      copy_into_ba({buffer_name}, {abi_bytearr_offset}, {converted_param_name})
+      """)
+    )
+    current_abi_offset += get_byte_size_of(event_param.var_type)
+  (copy_stmts, position_map)
+
+
+proc get_new_proc_def(event_sig: EventSignature): NimNode =
+  # copyNimTree(func_def)
+  var
+    param_list: seq[string]
+  for param in event_sig.inputs:
+    param_list.add(fmt"{param.name}:{param.var_type}")
+  var
+    param_str = param_list.join(";")
+    new_proc = parseExpr(
+      fmt"""
+      proc {event_sig.name} ({param_str}) =
+        discard
+      """
+    )
+  echo treeRepr(new_proc)
+ 
+  new_proc
+
 
 
 proc generate_log_func*(log_keyword: string, global_ctx: GlobalContext): (NimNode, string) =
@@ -60,38 +88,25 @@ proc generate_log_func*(log_keyword: string, global_ctx: GlobalContext): (NimNod
     new_proc_name = fmt"log_{event_name}"
     event_sig = global_ctx.events[event_name]
     func_def = event_sig.definition
-    event_func_def = copyNimTree(func_def)
+    event_func_def = get_new_proc_def(event_sig)
     total_data_buffer_size = get_total_data_buffer_size(func_def)
     data_size = total_data_buffer_size - 32
     event_id_int_arr = hexstr_to_intarray[32](getKHash(generate_method_sig(event_sig)))
     data_buffer_name = "output_buffer"
+    indexed_param_locations = get_indexed_param_locations(event_sig)
+
 
   # Create function definition.
-  event_func_def[0] = newIdentNode(new_proc_name)
+
+  event_func_def[0] =  newIdentNode(new_proc_name)
   event_func_def[4] = newEmptyNode()
   # Create data section buffer.
   event_func_def[6] = parseStmt(
     fmt"var {data_buffer_name} {{.noinit.}}: array[{total_data_buffer_size}, byte]"
   )
-  # event_func_def[6] = nnkStmtList.newTree(
-  #     nnkVarSection.newTree(
-  #     nnkIdentDefs.newTree(
-  #       nnkPragmaExpr.newTree(
-  #         newIdentNode(data_buffer_name),
-  #         nnkPragma.newTree(
-  #           newIdentNode("noinit")
-  #         )
-  #       ),
-  #       nnkBracketExpr.newTree(
-  #         newIdentNode("array"),
-  #         newLit(total_data_buffer_size),
-  #         newIdentNode("byte")
-  #       ),
-  #       newEmptyNode()
-  #     )
-  #   )
-  # )
-  var event_sig_int_arr = nnkBracket.newTree()
+
+  var 
+    event_sig_int_arr = nnkBracket.newTree()
   for x in event_id_int_arr:
     event_sig_int_arr.add(parseExpr(intToStr(x) & "'u8"))
   event_func_def[6].add(
@@ -111,14 +126,26 @@ proc generate_log_func*(log_keyword: string, global_ctx: GlobalContext): (NimNod
     )
   )
   # Copy data into memory
+  var (copiers, position_maps) = get_param_copiers(event_sig, data_buffer_name)
   event_func_def[6].add(
-    get_param_copiers(func_def, data_buffer_name)
+    copiers
   )
+  # Create topic parameters (1-3, after indexed function sig).
+  var 
+    topic_list: seq[string]
+    topic_count = 0
+  for i, param in event_sig.inputs:
+    if param.indexed:
+      topic_list.add(fmt"addr {data_buffer_name}[{intToStr(position_maps[param.name])}]")
+      topic_count += 1
+  # Add nils
+  for _ in 1..(3 - len(topic_list)):
+    topic_list.add("nil")
   # Call Log
   event_func_def[6].add(
     parseStmt(
     fmt"""
-    log(addr {data_buffer_name}[32], {data_size}.int32, 1.int32, addr {data_buffer_name}[0], nil, nil, nil)
+    log(addr {data_buffer_name}[32], {data_size}.int32, {1 + topic_count}.int32, addr {data_buffer_name}[0], {topic_list.join(",")})
     """
     )
   )

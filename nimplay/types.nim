@@ -26,6 +26,7 @@ type
     name*: string
     var_type*: string
     indexed*: bool
+    param_position*: int
 
 type
   FunctionSignature* = object
