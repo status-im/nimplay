@@ -100,10 +100,20 @@ proc generate_event_signature(proc_def: PNode): EventSignature =
     of nkFormalParams:
       for param in child:
         if param.kind == nkIdentDefs:
-          var ev = EventType(
-            name: param.sons[0].ident.s,
-            var_type: param.sons[1].ident.s
-          )
+          var
+            ev: EventType
+          if param[0].kind == nkPragmaExpr and param[0][1].kind == nkPragma:
+              ev = EventType(
+                name: param.sons[0].sons[0].ident.s,
+                var_type: param.sons[1].ident.s,
+                indexed: true
+              )
+          else:
+            ev = EventType(
+              name: param.sons[0].ident.s,
+              var_type: param.sons[1].ident.s,
+              indexed: false
+            )
           event_sig.inputs.add(ev)
     else:
       discard
