@@ -64,7 +64,7 @@ proc get_local_output_type_conversion(tmp_result_name, tmp_result_converted_name
         )
       )
     return (ident_node, conversion_node)
-  of "uint128":
+  of "uint128", "wei_value":
     var ident_node = newIdentNode(tmp_result_converted_name)
     var conversion_node = parseStmt(unindent(fmt"""
       var {tmp_result_converted_name}: array[32, byte]

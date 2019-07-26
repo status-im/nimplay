@@ -15,8 +15,8 @@ contract("KingOfTheHill"):
     king_else: uint128
 
   # Events
-  proc BecameKing(name: bytes32, value: uint128) {.event.}
-  proc BecameKing2(name {.indexed.}: bytes32, value {.indexed.}: uint128) {.event.}
+  # proc BecameKing(name: bytes32, value: uint128) {.event.}
+  proc BecameKing2(name {.indexed.}: bytes32, value: uint128) {.event.}
 
   # Methods
   proc becomeKing*(name: bytes32) {.payable,self,log,msg.} =
@@ -24,14 +24,14 @@ contract("KingOfTheHill"):
       self.king_name = name
       self.king_addr = msg.sender
       self.king_value = msg.value
-      log.BecameKing(name, msg.value)
+      # log.BecameKing(name, msg.value)
       log.BecameKing2(name, msg.value)
 
-  proc getKing*(): bytes32 =
-    self.king_name
+  # proc getKing*(): bytes32 =
+  #   self.king_name
 
-  proc getKingAddr*(): address =
-    self.king_addr
+  # proc getKingAddr*(): address =
+  #   self.king_addr
 
-  proc getKingValue*(): uint128 =
-    self.king_value
+  # proc getKingValue*(): wei_value =
+  #   self.king_value

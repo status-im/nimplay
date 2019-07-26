@@ -62,7 +62,8 @@ proc get_byte_size_of*(type_str: string): int =
     "uint256",
     "uint128",
     "address",
-    "bytes32"
+    "bytes32",
+    "wei_value"
   ]
   if type_str in BASE32_TYPES_NAMES:
     return 32
