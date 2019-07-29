@@ -109,7 +109,7 @@ proc generate_context(proc_def: NimNode, global_ctx: GlobalContext): LocalContex
   var ctx = LocalContext()
   ctx.name = get_func_name(proc_def)
   ctx.sig = generate_function_signature(proc_def, global_ctx)
-  (ctx.keyword_define_stmts, ctx.global_keyword_map) = get_keyword_defines(proc_def, global_ctx)
+  (ctx.keyword_define_stmts, ctx.global_keyword_map) = get_keyword_defines(proc_def, global_ctx, ctx)
   return ctx
 
 

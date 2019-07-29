@@ -44,11 +44,11 @@ contract("MyContract"):
     # proc ret_bytes32*(in_a: bytes32): bytes32 =
     #   return in_a
 
-    proc set_bytes32*(in_a: bytes32) =
+    proc set_bytes32*(in_a: bytes32) {.self.} =
       self.name = in_a
 
-    proc get_bytes32*(): bytes32 =
-      return self.name
+    proc get_bytes32*(): bytes32 {.self.} =
+      self.name
 
     # proc get_value*(): uint128 {.payable.} =
     #   return msg.value

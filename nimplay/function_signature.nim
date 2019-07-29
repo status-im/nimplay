@@ -1,6 +1,4 @@
-import macros
-import strutils
-import stint
+import macros, strutils, stint, strformat
 
 import ./utils, ./types
 
@@ -66,12 +64,18 @@ proc generate_function_signature*(proc_def: NimNode, global_ctx: GlobalContext):
         else:
           raise newException(Exception, "unknown param type" & treeRepr(child))
     of nnkPragma:
-      if child[0].kind == nnkIdent:
-        var pragma_name = strVal(child[0])
-        if not (pragma_name in @["payable", "event", "self", "msg"]):
-          raiseParserError("Unsupported pragma: " & pragma_name, child)
-        if pragma_name == "payable":
-          func_sig.payable = true
+      for pragma_child in child:
+        if pragma_child.kind == nnkIdent:
+          var pragma_name = strVal(pragma_child)
+          # Add pragma to list of pragmas
+          if not (pragma_name in ALLOWED_PRAGMAS):
+            raiseParserError(
+              fmt"Unsupported pragma: {pragma_name}, must be one of " & ALLOWED_PRAGMAS.join(","),
+              child
+            )
+          func_sig.pragma_base_keywords.add(pragma_name)
+          if pragma_name == "payable":
+            func_sig.payable = true
     else:
       discard
       # raise newException(Exception, "unknown func type" & treeRepr(child))

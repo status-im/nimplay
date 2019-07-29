@@ -39,6 +39,7 @@ type
     method_sig*: string
     is_private*: bool
     line_info*: LineInfo
+    pragma_base_keywords*: seq[string]  # list of pragmas
 
 type
   EventSignature* = object
@@ -73,3 +74,4 @@ let
   KEYWORDS* {.compileTime.} = @["contract", "self", "log"]
   TYPE_NAMES* {.compileTime.} = @["address", "uint256", "bytes32", "int128", "uint128"]
   ALL_KEYWORDS* {.compileTime.} = concat(TYPE_NAMES, KEYWORDS)
+  ALLOWED_PRAGMAS* {.compileTime.} = @["payable", "event", "self", "msg", "log"]

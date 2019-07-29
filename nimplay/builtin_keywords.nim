@@ -148,15 +148,27 @@ proc generate_defines(keywords: seq[string], global_ctx: GlobalContext): (NimNod
 
   return (stmts, tmp_vars)
 
+  
+proc check_keyword_defines(keywords_used: seq[string], local_ctx: LocalContext) =
+  for keyword in keywords_used:
+    var base = keyword.replace("set_", "")
+    if "." in base:
+      base = base.split(".")[0]
+    if not (base in local_ctx.sig.pragma_base_keywords):
+      raiseParserError(
+        fmt"Base Keyword {{.{base}.}} needs to be placed in the pragma of function '{local_ctx.sig.name}'.", 
+        local_ctx.sig.line_info
+      )
 
-proc get_keyword_defines*(proc_def: NimNode, global_ctx: GlobalContext): (NimNode, Table[string, string]) =
-  var keywords_used: seq[string]
+
+proc get_keyword_defines*(proc_def: NimNode, global_ctx: GlobalContext, local_ctx: LocalContext): (NimNode, Table[string, string]) =
+  var
+    keywords_used: seq[string]
   find_builtin_keywords(proc_def, keywords_used, global_ctx)
   keywords_used = deduplicate(keywords_used)
-  echo keywords_used
+  check_keyword_defines(keywords_used, local_ctx)
   let (global_define_stmts, global_keyword_map) = generate_defines(keywords_used, global_ctx)
   return (global_define_stmts, global_keyword_map)
-
 
 proc get_next_storage_node(kw_key_name: string, global_keyword_map: Table[string, string], current_node: NimNode): NimNode =
   if kw_key_name.startsWith("self."):
