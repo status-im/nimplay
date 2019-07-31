@@ -184,7 +184,6 @@ proc handle_event_defines(event_def: NimNode, global_ctx: var GlobalContext) =
               pragma_expr = param[0][1][0]
             if pragma_expr.kind != nnkIdent or strVal(pragma_expr) != "indexed":
                 raiseParserError("Unsupported pragma", pragma_expr)
-            # echo treeRepr(param)
             event_sig.inputs.add(EventType(
               name: strVal(param[0][0]),
               var_type: strVal(param[1]),
@@ -220,7 +219,7 @@ proc get_util_functions(): NimNode =
 
 proc get_getter_func(var_struct: VariableType): NimNode =
   parseStmt(fmt"""
-  proc {var_struct.name}*():{var_struct.var_type} {{.self.}} =
+  proc {var_struct.name}*():{var_struct.var_type} {{.self.}} = ## generated getter
     self.{var_struct.name}  
   """)[0]
 
@@ -243,8 +242,6 @@ proc handle_contract_interface(in_stmts: NimNode): NimNode =
       in_stmts.add(get_getter_func(var_struct))
   echo treeRepr(in_stmts)
   for child in in_stmts:
-    echo treeRepr(child)
-    echo "^^^^^^^^^^&&&&"
     case child.kind:
     of nnkProcDef:
       if child[6].kind == nnkEmpty:  # Event definition.

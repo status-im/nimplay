@@ -34,6 +34,15 @@ type
       indexed: bool
 
 
+proc get_abi_type(nimplay_type_str: string): string =
+  if nimplay_type_str in @["uint256", "bytes32", "int128", "uint128", "address"]:
+    nimplay_type_str
+  elif  nimplay_type_str == "wei_value":
+    "uint128"
+  else:
+    raise newException(Exception, "Unknown type: " & nimplay_type_str)
+
+
 proc string_to_ast*(s: string): PNode {.raises: [Exception] .} =
   var conf = newConfigRef()
   var cache = newIdentCache()
@@ -67,14 +76,14 @@ proc generate_function_signature(proc_def: PNode): FunctionSignature =
           func_sig.outputs.add(
             VariableType(
               name: "out1",
-              var_type: param.ident.s
+              var_type: get_abi_type(param.ident.s)
             )
           )
         of nkIdentDefs:
           func_sig.inputs.add(
             VariableType(
               name: param.sons[0].ident.s,
-              var_type: param.sons[1].ident.s
+              var_type: get_abi_type(param.sons[1].ident.s)
             )
           )
         of nkEmpty:
@@ -133,7 +142,23 @@ proc generateSignatures(stmts: PNode): (seq[FunctionSignature], seq[EventSignatu
         for b in main_block.sons:
           if b.kind == nkStmtList:
             for s in b.sons:
-              if s.kind == nkFuncDef or s.kind == nkProcDef:
+              if s.kind == nkVarSection:  # handle getters.
+                for var_def in s.sons:
+                  if var_def.kind == nkIdentDefs:
+                    var
+                      potential_postfix = var_def.sons[0]
+                    if potential_postfix.kind == nkPostfix and potential_postfix.sons[0].ident.s == "*":
+                      var
+                        func_name = potential_postfix.sons[1].ident.s 
+                        type_name = var_def.sons[1].ident.s
+                        sig = FunctionSignature(name: func_name)
+                      sig.outputs.add(
+                        VariableType(name: "out1", var_type: get_abi_type(type_name))
+                      )
+                      public_functions.add(
+                        sig
+                      )
+              elif s.kind == nkFuncDef or s.kind == nkProcDef:
                 # only get public functions.
                 if s[0].kind == nkPostfix and s[0][0].ident.s == "*":
                   public_functions.add(

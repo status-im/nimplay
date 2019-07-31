@@ -12,11 +12,9 @@ contract("KingOfTheHill"):
     king_name*: bytes32
     king_addr*: address
     king_value*: wei_value
-    king_else*: uint128
 
   # Events
   proc BecameKing(name: bytes32, value: uint128) {.event.}
-  proc BecameKing2(name {.indexed.}: bytes32, value: uint128) {.event.}
 
   # Methods
   proc becomeKing*(name: bytes32) {.payable,self,msg,log.} =
@@ -24,5 +22,4 @@ contract("KingOfTheHill"):
       self.king_name = name
       self.king_addr = msg.sender
       self.king_value = msg.value
-      # log.BecameKing(name, msg.value)
-      log.BecameKing2(name, msg.value)
+      log.BecameKing(name, msg.value)
