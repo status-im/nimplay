@@ -218,17 +218,34 @@ proc get_util_functions(): NimNode =
   """)
 
 
-proc handle_contract_interface(stmts: NimNode): NimNode = 
-  var main_out_stmts = newStmtList()
-  var function_signatures = newSeq[FunctionSignature]()
-  var global_ctx = GlobalContext()
+proc get_getter_func(var_struct: VariableType): NimNode =
+  parseStmt(fmt"""
+  proc {var_struct.name}*():{var_struct.var_type} {{.self.}} =
+    self.{var_struct.name}  
+  """)[0]
+
+
+proc handle_contract_interface(in_stmts: NimNode): NimNode = 
+  var
+    main_out_stmts = newStmtList()
+    function_signatures = newSeq[FunctionSignature]()
+    global_ctx = GlobalContext()
 
   main_out_stmts.add(get_util_functions())
 
-  for child in stmts:
-    case child.kind:
-    of nnkVarSection:
+  for child in in_stmts:
+    if child.kind == nnkVarSection:
       handle_global_defines(child, global_ctx)
+
+  # Inject getter functions if needed.
+  if  global_ctx.getter_funcs.len > 0:
+    for var_struct in global_ctx.getter_funcs:
+      in_stmts.add(get_getter_func(var_struct))
+  echo treeRepr(in_stmts)
+  for child in in_stmts:
+    echo treeRepr(child)
+    echo "^^^^^^^^^^&&&&"
+    case child.kind:
     of nnkProcDef:
       if child[6].kind == nnkEmpty:  # Event definition.
         handle_event_defines(child, global_ctx)
@@ -246,9 +263,8 @@ proc handle_contract_interface(stmts: NimNode): NimNode =
       main_out_stmts.add(new_proc_def)
     else:
       discard
-  echo "Events:"
-  for event_name in global_ctx.events.keys:
-    echo event_name
+  
+  echo $function_signatures
   if filter(function_signatures, proc(x: FunctionSignature): bool = not x.is_private).len == 0:
     raise newException(
       ParserError,
