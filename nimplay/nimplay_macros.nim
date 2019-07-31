@@ -118,26 +118,37 @@ proc handle_global_defines(var_section: NimNode, global_ctx :var GlobalContext) 
   for child in var_section:
     case child.kind
     of nnkIdentDefs:
-      if (child[0].kind, child[1].kind) != (nnkIdent, nnkIdent):
+      var create_getter = false
+      if (child[0].kind, child[1].kind) == (nnkPostfix, nnkIdent) and strVal(child[0][0]) == "*":
+        # create getter.
+        create_getter = true
+      elif (child[0].kind, child[1].kind) != (nnkIdent, nnkIdent):
         echo treeRepr(child)
         raiseParserError(
           "Global variables need to be defined as 'var_name: var_type'",
           child
         )
-      check_valid_variable_name(child[0], global_ctx)
-      var var_name = strVal(child[0])
-      var var_type = strVal(child[1])
+
+      var
+        var_node = if create_getter: child[0][1] else: child[0]
+        var_name = strVal(var_node)
+        var_type = strVal(child[1])
+
+      check_valid_variable_name(var_node, global_ctx)
       # echo var_name & " -> " & var_type
       if var_name in global_ctx.global_variables:
         raiseParserError(
           fmt"Global variable '{var_name}' has already been defined",
           child
         )
-      global_ctx.global_variables[var_name] = VariableType(
+      var var_struct = VariableType(
         name: var_name,
         var_type: var_type,
         slot: slot_number
       )
+      if create_getter:
+        global_ctx.getter_funcs.add(var_struct)
+      global_ctx.global_variables[var_name] = var_struct
       inc(slot_number)
     else:
       raiseParserError(

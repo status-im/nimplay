@@ -44,8 +44,9 @@ proc valid_var_chars(var_name: string): bool =
 
 proc check_valid_variable_name*(node: NimNode, global_ctx: GlobalContext) =
   expectKind(node, nnkIdent)
-  var name = strVal(node)
-  var err_msg = ""
+  var
+    name = strVal(node)
+    err_msg = ""
 
   if global_ctx.global_variables.hasKey(name):
     err_msg = "Variable name is same as a global variable, please chose another name."

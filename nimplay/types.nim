@@ -63,6 +63,7 @@ type
   GlobalContext* = object
     global_variables*: Table[string, VariableType]
     events*: Table[string, EventSignature]
+    getter_funcs*: seq[VariableType]
 
 # Exceptions.
 

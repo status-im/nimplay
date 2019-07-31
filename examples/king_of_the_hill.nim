@@ -9,10 +9,10 @@ contract("KingOfTheHill"):
 
   # Globals
   var
-    king_name: bytes32
-    king_addr: address
-    king_value: wei_value
-    king_else: uint128
+    king_name*: bytes32
+    king_addr*: address
+    king_value*: wei_value
+    king_else*: uint128
 
   # Events
   # proc BecameKing(name: bytes32, value: uint128) {.event.}
@@ -27,11 +27,11 @@ contract("KingOfTheHill"):
       # log.BecameKing(name, msg.value)
       log.BecameKing2(name, msg.value)
 
-  proc getKing*(): bytes32 {.self.} =
-    self.king_name
+  # proc getKing*(): bytes32 {.self.} =
+  #   self.king_name
 
-  proc getKingAddr*(): address {.self.} =
-    self.king_addr
+  # proc getKingAddr*(): address {.self.} =
+  #   self.king_addr
 
-  proc getKingValue*(): wei_value {.self.} =
-    self.king_value
+  # proc getKingValue*(): wei_value {.self.} =
+  #   self.king_value
