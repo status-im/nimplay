@@ -164,7 +164,7 @@ proc generateSignatures(stmts: PNode): (seq[FunctionSignature], seq[EventSignatu
                   public_functions.add(
                     generate_function_signature(s)
                   )
-                                # handle event signature
+                # handle event signature
                 elif s[6].kind == nkEmpty:
                   events.add(
                     generate_event_signature(s)
