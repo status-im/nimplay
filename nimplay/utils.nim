@@ -62,6 +62,7 @@ proc get_byte_size_of*(type_str: string): int =
   let BASE32_TYPES_NAMES: array = [
     "uint256",
     "uint128",
+    "int128",
     "address",
     "bytes32",
     "wei_value"

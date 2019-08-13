@@ -210,11 +210,21 @@ proc handle_event_defines(event_def: NimNode, global_ctx: var GlobalContext) =
 
 
 proc get_util_functions(): NimNode =
-  parseStmt("""
+  var stmts = newStmtList()
+
+  stmts.add(parseStmt("""
     template copy_into_ba(to_ba: var untyped, offset: int, from_ba: untyped) =
       for i, x in from_ba:
         to_ba[offset + i] = x
-  """)
+  """))
+  stmts.add(parseStmt("""
+    proc assertNotPayable() =
+      var b {.noinit.}: array[16, byte]
+      getCallValue(addr b)
+      if Uint128.fromBytesBE(b) > 0.stuint(128):
+        revert(nil, 0)
+  """))
+  stmts  # return
 
 
 proc get_getter_func(var_struct: VariableType): NimNode =
@@ -316,6 +326,9 @@ proc handle_contract_interface(in_stmts: NimNode): NimNode =
       newIdentNode(func_sig.name)
     )
     var start_offset = 4
+
+    if not func_sig.payable:
+      call_and_copy_block.add(parseStmt("assertNotPayable()"))
 
     for idx, param in func_sig.inputs:
       var static_param_size = get_byte_size_of(param.var_type)
