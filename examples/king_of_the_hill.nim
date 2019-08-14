@@ -1,7 +1,4 @@
-import ../nimplay/nimplay_macros
-import ../nimplay/types
-import ../nimplay/ewasm_eei
-import stint
+import ../nimplay0_1
 
 
 contract("KingOfTheHill"):
