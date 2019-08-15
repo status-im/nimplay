@@ -123,7 +123,6 @@ proc handle_global_defines(var_section: NimNode, global_ctx :var GlobalContext) 
         # create getter.
         create_getter = true
       elif (child[0].kind, child[1].kind) != (nnkIdent, nnkIdent):
-        echo treeRepr(child)
         raiseParserError(
           "Global variables need to be defined as 'var_name: var_type'",
           child
@@ -250,7 +249,7 @@ proc handle_contract_interface(in_stmts: NimNode): NimNode =
   if  global_ctx.getter_funcs.len > 0:
     for var_struct in global_ctx.getter_funcs:
       in_stmts.add(get_getter_func(var_struct))
-  echo treeRepr(in_stmts)
+
   for child in in_stmts:
     case child.kind:
     of nnkProcDef:
@@ -271,7 +270,6 @@ proc handle_contract_interface(in_stmts: NimNode): NimNode =
     else:
       discard
   
-  echo $function_signatures
   if filter(function_signatures, proc(x: FunctionSignature): bool = not x.is_private).len == 0:
     raise newException(
       ParserError,
