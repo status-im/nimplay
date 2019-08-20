@@ -1,7 +1,10 @@
 pwd=$(shell pwd)
+POSTPROCESS=tools/eth_postprocess.sh
 NLVM_PATH_PARAMS=-p:/code/vendors/nimcrypto -p:/code/vendors/stint -p:/code/vendors/nim-stew/
 DOCKER_NLVM=docker run -w /code/ -v $(pwd):/code/ jacqueswww/nlvm
 DOCKER_NLVM_C=$(DOCKER_NLVM) $(NLVM_PATH_PARAMS) c
+NLVM_WAMS32_FLAGS= --nlvm.target=wasm32 --gc:none -l:--no-entry -l:--allow-undefined -d:clang
+DOCKER_WASM32_C=$(DOCKER_NLVM) $(NLVM_PATH_PARAMS) $(NLVM_WAMS32_FLAGS) c
 
 .PHONY: get-nlvm-docker
 get-nlvm-docker:
@@ -31,5 +34,10 @@ vendors:
 	cd vendors
 	git submodule update
 
-examples:
-	@$(MAKE) -C examples
+.PHONY: king_of_the_hill
+king_of_the_hill:
+	$(DOCKER_WASM32_C) examples/king_of_the_hill.nim
+	$(POSTPROCESS) examples/king_of_the_hill.wasm
+
+.PHONY: examples
+examples: king_of_the_hill
