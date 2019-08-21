@@ -1,4 +1,4 @@
-# Nimplay
+<img src="https://user-images.githubusercontent.com/6917456/63434929-4829a180-c426-11e9-89bf-47b1c10a123b.png" width="200" alt="NimPlay">
 
 [![Join the chat at https://gitter.im/status-im/nimplay](https://badges.gitter.im/status-im/nimplay.svg)](https://gitter.im/status-im/nimplay?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
