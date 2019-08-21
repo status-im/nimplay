@@ -6,9 +6,12 @@ DOCKER_NLVM_C=$(DOCKER_NLVM) $(NLVM_PATH_PARAMS) c
 NLVM_WAMS32_FLAGS= --nlvm.target=wasm32 --gc:none -l:--no-entry -l:--allow-undefined -d:clang
 DOCKER_WASM32_C=$(DOCKER_NLVM) $(NLVM_PATH_PARAMS) $(NLVM_WAMS32_FLAGS) c
 
+.PHONY: all
+all: get-nlvm-docker tools examples
+
 .PHONY: get-nlvm-docker
 get-nlvm-docker:
-	docker pull jacqueswww/nlvm
+	docker pull docker.io/jacqueswww/nlvm
 
 .PHONY: get-wabt
 get-wabt:
