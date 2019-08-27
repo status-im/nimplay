@@ -1,7 +1,7 @@
 
 WASM_FILE=$1
 
-# set -ex
+set -ex
 if which wasm-gc > /dev/null
 then
   wasm-gc "$WASM_FILE" # Optimize

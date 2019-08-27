@@ -1,14 +1,38 @@
+user_id :=$(shell id -u $(shell whoami))
 pwd=$(shell pwd)
 POSTPROCESS=tools/eth_postprocess.sh
-NLVM_PATH_PARAMS=-p:/code/vendors/nimcrypto -p:/code/vendors/stint -p:/code/vendors/nim-stew/
-DOCKER_NLVM=docker run -w /code/ -v $(pwd):/code/ jacqueswww/nlvm
-DOCKER_NLVM_C=$(DOCKER_NLVM) $(NLVM_PATH_PARAMS) c
+PATH_PARAMS=-p:/code/vendors/nimcrypto -p:/code/vendors/stint -p:/code/vendors/nim-stew/
+# Use NLVM
+DOCKER_NLVM=docker run -e HOME='/tmp/' --user $(user_id):$(user_id) -w /code/ -v $(pwd):/code/ jacqueswww/nlvm
+DOCKER_NLVM_C=$(DOCKER_NLVM) $(PATH_PARAMS) c
 NLVM_WAMS32_FLAGS= --nlvm.target=wasm32 --gc:none -l:--no-entry -l:--allow-undefined -d:clang
-DOCKER_WASM32_C=$(DOCKER_NLVM) $(NLVM_PATH_PARAMS) $(NLVM_WAMS32_FLAGS) c
+DOCKER_NLVM_C=$(DOCKER_NLVM) $(PATH_PARAMS) $(NLVM_WAMS32_FLAGS) c
+# Use nim + clang
+DOCKER_NIM_CLANG=docker run -e HOME='/tmp/' --user $(user_id):$(user_id) -w /code/ -v $(pwd):/code/ --entrypoint="/usr/bin/nim" jacqueswww/nimclang --verbosity:2
+DOCKER_NIM_CLANG_PASS_FLAGS = --passC:"--target=wasm32-unknown-unknown-wasm" \
+--passL:"--target=wasm32-unknown-unknown-wasm" --passC:"-I./include" --clang.options.linker:"-nostdlib -Wl,--no-entry,--allow-undefined,--strip-all,--export-dynamic"
+DOCKER_NIM_CLANG_FLAGS=$(DOCKER_NIM_CLANG_PASS_FLAGS) --os:standalone --cpu:i386 --cc:clang --gc:none --nomain
+DOCKER_NIM_CLANG_C=$(DOCKER_NIM_CLANG) --cc:clang $(PATH_PARAMS) c
+DOCKER_NIM_CLANG_WASM32_C=$(DOCKER_NIM_CLANG) $(DOCKER_NIM_CLANG_FLAGS) $(PATH_PARAMS) c
+
+ifdef USE_NLVM
+	NIMC=$(DOCKER_NLVM_C)
+	WASM32_NIMC=$(DOCKER_NLVM_C)
+else
+	NIMC=$(DOCKER_NIM_CLANG_C)
+	WASM32_NIMC=$(DOCKER_NIM_CLANG_WASM32_C)
+endif
+
+.PHONY: all
+all: tools examples
 
 .PHONY: get-nlvm-docker
 get-nlvm-docker:
-	docker pull jacqueswww/nlvm
+	docker pull docker.io/jacqueswww/nlvm
+
+.PHONY: get-nimclang-docker
+get-nimclang-docker:
+	docker pull docker.io/jacqueswww/nimclang
 
 .PHONY: get-wabt
 get-wabt:
@@ -17,8 +41,8 @@ get-wabt:
 
 .PHONY: tools
 tools:
-	$(DOCKER_NLVM_C) -d:release --out:tools/k256_sig tools/k256_sig.nim
-	$(DOCKER_NLVM_C) -d:release --out:tools/abi_gen tools/abi_gen.nim
+	$(NIMC) -d:release --out:tools/k256_sig tools/k256_sig.nim
+	$(NIMC) -d:release --out:tools/abi_gen tools/abi_gen.nim
 
 .PHONY: clean
 clean:
@@ -36,7 +60,7 @@ vendors:
 
 .PHONY: king_of_the_hill
 king_of_the_hill:
-	$(DOCKER_WASM32_C) examples/king_of_the_hill.nim
+	$(WASM32_NIMC) examples/king_of_the_hill.nim
 	$(POSTPROCESS) examples/king_of_the_hill.wasm
 
 .PHONY: examples
