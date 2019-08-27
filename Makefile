@@ -8,7 +8,7 @@ DOCKER_NLVM_C=$(DOCKER_NLVM) $(PATH_PARAMS) c
 NLVM_WAMS32_FLAGS= --nlvm.target=wasm32 --gc:none -l:--no-entry -l:--allow-undefined -d:clang
 DOCKER_NLVM_C=$(DOCKER_NLVM) $(PATH_PARAMS) $(NLVM_WAMS32_FLAGS) c
 # Use nim + clang
-DOCKER_NIM_CLANG=docker run -e HOME='/tmp/' --user $(user_id):$(user_id) -w /code/ -v $(pwd):/code/ --entrypoint="/usr/bin/nim" nimclang --verbosity:2
+DOCKER_NIM_CLANG=docker run -e HOME='/tmp/' --user $(user_id):$(user_id) -w /code/ -v $(pwd):/code/ --entrypoint="/usr/bin/nim" jacqueswww/nimclang --verbosity:2
 DOCKER_NIM_CLANG_PASS_FLAGS = --passC:"--target=wasm32-unknown-unknown-wasm" \
 --passL:"--target=wasm32-unknown-unknown-wasm" --passC:"-I./include" --clang.options.linker:"-nostdlib -Wl,--no-entry,--allow-undefined,--strip-all,--export-dynamic"
 DOCKER_NIM_CLANG_FLAGS=$(DOCKER_NIM_CLANG_PASS_FLAGS) --os:standalone --cpu:i386 --cc:clang --gc:none --nomain
@@ -29,6 +29,10 @@ all: tools examples
 .PHONY: get-nlvm-docker
 get-nlvm-docker:
 	docker pull docker.io/jacqueswww/nlvm
+
+.PHONY: get-nimclang-docker
+get-nimclang-docker:
+	docker pull docker.io/jacqueswww/nimclang
 
 .PHONY: get-wabt
 get-wabt:
