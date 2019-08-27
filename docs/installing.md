@@ -16,6 +16,6 @@ make examples
 
 ```
 make get-nlvm-docker
-make tools
-make examples
+make USE_NLVM=1 tools
+make USE_NLVM=1 examples
 ```
