@@ -3,7 +3,7 @@ pwd=$(shell pwd)
 POSTPROCESS=tools/eth_postprocess.sh
 PATH_PARAMS=-p:/code/vendors/nimcrypto -p:/code/vendors/stint -p:/code/vendors/nim-stew/
 # Use NLVM
-DOCKER_NLVM=docker -w /code/ -v $(pwd):/code/ jacqueswww/nlvm
+DOCKER_NLVM=docker run -e HOME='/tmp/' --user $(user_id):$(user_id) -w /code/ -v $(pwd):/code/ jacqueswww/nlvm
 DOCKER_NLVM_C=$(DOCKER_NLVM) $(PATH_PARAMS) c
 NLVM_WAMS32_FLAGS= --nlvm.target=wasm32 --gc:none -l:--no-entry -l:--allow-undefined -d:clang
 DOCKER_NLVM_C=$(DOCKER_NLVM) $(PATH_PARAMS) $(NLVM_WAMS32_FLAGS) c
@@ -15,7 +15,7 @@ DOCKER_NIM_CLANG_FLAGS=$(DOCKER_NIM_CLANG_PASS_FLAGS) --os:standalone --cpu:i386
 DOCKER_NIM_CLANG_C=$(DOCKER_NIM_CLANG) --cc:clang $(PATH_PARAMS) c
 DOCKER_NIM_CLANG_WASM32_C=$(DOCKER_NIM_CLANG) $(DOCKER_NIM_CLANG_FLAGS) $(PATH_PARAMS) c
 
-ifdef USE_NLVM:
+ifdef USE_NLVM
 	NIMC=$(DOCKER_NLVM_C)
 	WASM32_NIMC=$(DOCKER_NLVM_C)
 else
