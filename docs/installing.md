@@ -16,14 +16,13 @@ To use NLVM instead of Nim + Clang use
 ```
 git submodule update --init
 make get-wabt
+make USE_NLVM=1 tools
 make get-nlvm-docker
-
 ```
 
 ### Using NLVM docker
 
 ```
-make USE_NLVM=1 tools
 make USE_NLVM=1 examples
 ```
 
@@ -46,3 +45,37 @@ or
 ```
 make USE_NLVM=1 examples
 ```
+
+## Deploying to EWASM Testnet
+
+Nimplay ships with a deploy python script (requires web3py installed). This script key can be used to deploy a contract
+
+Place 32 byte private key, hex encoded in `.priv_key_hex`
+```
+cat > .priv_key_hex
+0x0000000000000000000000000000000000000000000000000000000000000000
+```
+
+To deploy a contract use:
+```
+./tools/deploy.py  examples/king_of_the_hill.wasm
+```
+
+The following enviroment variables are consumed by the deploy.py script
+
+| Varname         |Default (unset)                 |
+|---              |---                             |
+| PRIVATE_KEY_FILE| .priv_key_hex                  |
+| RPC_URL         |  http://ewasm.ethereum.org:8545|
+| WAT2WASM        | ./tools/wabt/bin/wat2wasm      |
+| WASM2WAT        | ./tools/wabt/bin/wasm2wat      |
+
+### ModuleNotFoundError: No module named 'web3'
+
+This means web3py is not installed, please install using pip:
+
+```
+pip install --user web3
+```
+
+Also see how to make a [virtualenv](https://www.liquidweb.com/kb/creating-virtual-environment-ubuntu-16-04/) if you want your packages isolated.
