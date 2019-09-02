@@ -5,13 +5,13 @@ PATH_PARAMS=-p:/code/vendors/nimcrypto -p:/code/vendors/stint -p:/code/vendors/n
 # Use NLVM
 DOCKER_NLVM=docker run -e HOME='/tmp/' --user $(user_id):$(user_id) -w /code/ -v $(pwd):/code/ jacqueswww/nlvm
 DOCKER_NLVM_C=$(DOCKER_NLVM) $(PATH_PARAMS) c
-NLVM_WAMS32_FLAGS= --nlvm.target=wasm32 --gc:none -l:--no-entry -l:--allow-undefined -d:clang
+NLVM_WAMS32_FLAGS= --nlvm.target=wasm32 --gc:none -l:--no-entry -l:--allow-undefined -d:clang -d:release
 DOCKER_NLVM_C=$(DOCKER_NLVM) $(PATH_PARAMS) $(NLVM_WAMS32_FLAGS) c
 # Use nim + clang
 DOCKER_NIM_CLANG=docker run -e HOME='/tmp/' --user $(user_id):$(user_id) -w /code/ -v $(pwd):/code/ --entrypoint="/usr/bin/nim" jacqueswww/nimclang --verbosity:2
 DOCKER_NIM_CLANG_PASS_FLAGS = --passC:"--target=wasm32-unknown-unknown-wasm" \
 --passL:"--target=wasm32-unknown-unknown-wasm" --passC:"-I./include" --clang.options.linker:"-nostdlib -Wl,--no-entry,--allow-undefined,--strip-all,--export-dynamic"
-DOCKER_NIM_CLANG_FLAGS=$(DOCKER_NIM_CLANG_PASS_FLAGS) --os:standalone --cpu:i386 --cc:clang --gc:none --nomain
+DOCKER_NIM_CLANG_FLAGS=$(DOCKER_NIM_CLANG_PASS_FLAGS) --os:standalone --cpu:i386 --cc:clang --gc:none --nomain -d:release
 DOCKER_NIM_CLANG_C=$(DOCKER_NIM_CLANG) --cc:clang $(PATH_PARAMS) c
 DOCKER_NIM_CLANG_WASM32_C=$(DOCKER_NIM_CLANG) $(DOCKER_NIM_CLANG_FLAGS) $(PATH_PARAMS) c
 
@@ -36,7 +36,8 @@ get-nimclang-docker:
 
 .PHONY: get-wabt
 get-wabt:
-	"./tools/get_wabt.sh"
+	rm -rf tools/wabt
+	./tools/get_wabt.sh
 	mv wabt tools/
 
 .PHONY: tools
@@ -56,11 +57,11 @@ get-nlvm-appimage:
 .PHONY: vendors
 vendors:
 	cd vendors
-	git submodule update
+	git submodule update --init
 
 .PHONY: king_of_the_hill
 king_of_the_hill:
-	$(WASM32_NIMC) examples/king_of_the_hill.nim
+	$(WASM32_NIMC) --out:examples/king_of_the_hill.wasm examples/king_of_the_hill.nim
 	$(POSTPROCESS) examples/king_of_the_hill.wasm
 
 .PHONY: examples

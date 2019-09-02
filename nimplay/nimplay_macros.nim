@@ -211,8 +211,10 @@ proc handle_event_defines(event_def: NimNode, global_ctx: var GlobalContext) =
 proc get_util_functions(): NimNode =
   var stmts = newStmtList()
 
+  # template copy_into_ba(to_ba: var untyped, offset: int, from_ba: untyped) =
+  # proc copy_into_ba(to_ba: var auto, offset: int, from_ba: auto) =
   stmts.add(parseStmt("""
-    template copy_into_ba(to_ba: var untyped, offset: int, from_ba: untyped) =
+    proc copy_into_ba(to_ba: var auto, offset: int, from_ba: auto) =
       for i, x in from_ba:
         to_ba[offset + i] = x
   """))
