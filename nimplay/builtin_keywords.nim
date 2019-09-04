@@ -91,25 +91,16 @@ proc generate_defines(keywords: seq[string], global_ctx: GlobalContext): (NimNod
   var stmts = newStmtList()
   var tmp_vars = initTable[string, string]()
   if "msg.sender" in keywords:
-    var tmp_var_name = fmt"msg_sender_tmp_variable_alloc"
-    stmts.add(
-      nnkStmtList.newTree(
-        nnkVarSection.newTree(
-          nnkIdentDefs.newTree(
-            newIdentNode(tmp_var_name),
-            newIdentNode("address"),
-            newEmptyNode()
-          )
-        ),
-        nnkCall.newTree(
-          newIdentNode("getCaller"),
-          nnkCommand.newTree(
-            newIdentNode("addr"),
-            newIdentNode(tmp_var_name)
-          )
-        )
-      )
-    )
+
+    var 
+      tmp_var_name = "msg_sender_tmp_variable_alloc"
+      tmp_var_node = newIdentNode(tmp_var_name)
+
+    var s = quote do:
+      var `tmp_var_node` {.noinit.}: address
+      getCaller(addr `tmp_var_node`)
+
+    stmts.add(s)
     tmp_vars["msg.sender"] = tmp_var_name
 
   if "msg.value" in keywords:
