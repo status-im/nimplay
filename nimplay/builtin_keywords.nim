@@ -106,9 +106,9 @@ proc generate_defines(keywords: seq[string], global_ctx: GlobalContext): (NimNod
   if "msg.value" in keywords:
     var tmp_func_name = fmt"msg_value_func"
     stmts.add(parseStmt("proc " & tmp_func_name & """(): uint128 =
-      var ba: array[16, byte]
+      var ba {.noinit.}: array[16, byte]
       getCallValue(addr ba)
-      var val: Stuint[128]
+      var val {.noinit.}: Stuint[128]
       {.pragma: restrict, codegenDecl: "$# __restrict $#".}
       let r_ptr {.restrict.} = cast[ptr array[128, byte]](addr val)
       for i, b in ba:

@@ -74,10 +74,7 @@ proc get_new_proc_def(event_sig: EventSignature): NimNode =
         discard
       """
     )
-  echo treeRepr(new_proc)
- 
   new_proc
-
 
 
 proc generate_log_func*(log_keyword: string, global_ctx: GlobalContext): (NimNode, string) =

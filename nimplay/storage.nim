@@ -17,7 +17,7 @@ proc generate_storage_get_func*(storage_keword: string, global_ctx: GlobalContex
     var new_proc = parseStmt(fmt"""
     proc {new_proc_name}(): uint256 =
       var
-        tmp: array[32, byte]
+        tmp {{.noinit.}}: array[32, byte]
         pos = {$slot_number}.stuint(32).toByteArrayBE
       storageLoad(pos, addr tmp)
       return Uint256.fromBytesBE(tmp)
@@ -27,8 +27,8 @@ proc generate_storage_get_func*(storage_keword: string, global_ctx: GlobalContex
     var new_proc = parseStmt(fmt"""
     proc {new_proc_name}(): {var_info.var_type} =
       var
-        tmp: array[32, byte]
-        tmp_ba: array[16, byte]
+        tmp {{.noinit.}}: array[32, byte]
+        tmp_ba {{.noinit.}}: array[16, byte]
         pos = {$slot_number}.stuint(32).toByteArrayBE
       storageLoad(pos, addr tmp)
       for i in 0..15:
@@ -40,7 +40,7 @@ proc generate_storage_get_func*(storage_keword: string, global_ctx: GlobalContex
     var new_proc = parseStmt(fmt"""
     proc {new_proc_name}(): address =
       var
-        tmp: array[32, byte]
+        tmp {{.noinit.}}: array[32, byte]
         pos = {$slot_number}.stuint(32).toByteArrayBE
       storageLoad(pos, addr tmp)
       var out_var: address 
@@ -54,8 +54,8 @@ proc generate_storage_get_func*(storage_keword: string, global_ctx: GlobalContex
   elif var_info.var_type == "bytes32":
     var new_proc = parseStmt(fmt"""
     proc {new_proc_name}(): bytes32 =
-      var 
-        tmp: bytes32
+      var
+        tmp {{.noinit.}}: bytes32
         pos = {$slot_number}.stuint(32).toByteArrayBE
       storageLoad(pos, addr tmp)
       return tmp
@@ -76,7 +76,7 @@ proc generate_storage_set_func*(storage_keyword: string, global_ctx: GlobalConte
     var new_proc = parseStmt(fmt"""
     proc {new_proc_name}(value:uint256) =
       var
-        tmp: array[32, byte] = value.toByteArrayBE
+        tmp {{.noinit.}}: array[32, byte] = value.toByteArrayBE
         pos = {$slot_number}.stuint(32).toByteArrayBE
       storageStore(pos, addr tmp)
     """)
@@ -85,7 +85,7 @@ proc generate_storage_set_func*(storage_keyword: string, global_ctx: GlobalConte
     var new_proc = parseStmt(fmt"""
     proc {new_proc_name}(value: {var_info.var_type}) =
       var
-        tmp: array[32, byte]
+        tmp {{.noinit.}}: array[32, byte]
         pos = {$slot_number}.stuint(32).toByteArrayBE
         tmp_ba = value.toByteArrayBE
       for i in 0..15:
@@ -97,7 +97,7 @@ proc generate_storage_set_func*(storage_keyword: string, global_ctx: GlobalConte
     var new_proc = parseStmt(fmt"""
     proc {new_proc_name}(value: address) =
       var
-        tmp: array[32, byte]
+        tmp {{.noinit.}}: array[32, byte]
         pos = {$slot_number}.stuint(32).toByteArrayBE
       for i, b in value:
         tmp[12 + i] = b

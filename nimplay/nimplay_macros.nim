@@ -67,7 +67,7 @@ proc get_local_output_type_conversion(tmp_result_name, tmp_result_converted_name
   of "uint128", "wei_value":
     var ident_node = newIdentNode(tmp_result_converted_name)
     var conversion_node = parseStmt(unindent(fmt"""
-      var {tmp_result_converted_name}: array[32, byte]
+      var {tmp_result_converted_name} {{.noinit.}}: array[32, byte]
       {tmp_result_converted_name}[16..31] = toByteArrayBE({tmp_result_name})
     """))
     return (ident_node, conversion_node)
@@ -208,26 +208,26 @@ proc handle_event_defines(event_def: NimNode, global_ctx: var GlobalContext) =
   global_ctx.events[event_name] = event_sig
 
 
-proc get_util_functions(): NimNode =
-  quote do:
-    # template copy_into_ba(to_ba: var untyped, offset: int, from_ba: untyped) =
-    # proc copy_into_ba(to_ba: var auto, offset: int, from_ba: auto) =
-    proc copy_into_ba(to_ba: var auto, offset: int, from_ba: auto) =
-      for i, x in from_ba:
-        to_ba[offset + i] = x
+template get_util_functions() {.dirty.} =
+  proc copy_into_ba(to_ba: var auto, offset: int, from_ba: auto) =
+    for i, x in from_ba:
+      to_ba[offset + i] = x
 
-    proc assertNotPayable() =
-      var b {.noinit.}: array[16, byte]
-      getCallValue(addr b)
-      if Uint128.fromBytesBE(b) > 0.stuint(128):
-        revert(nil, 0)
+  proc assertNotPayable() =
+    var b {.noinit.}: array[16, byte]
+    getCallValue(addr b)
+    if Uint128.fromBytesBE(b) > 0.stuint(128):
+      revert(nil, 0)
 
 
 proc get_getter_func(var_struct: VariableType): NimNode =
-  parseStmt(fmt"""
-  proc {var_struct.name}*():{var_struct.var_type} {{.self.}} = ## generated getter
-    self.{var_struct.name}  
-  """)[0]
+  let
+    proc_name_node = newIdentNode(var_struct.name)
+    proc_return_type_node = newIdentNode(var_struct.var_type)
+    storage_name_node = newIdentNode(var_struct.name)
+  quote do:
+    proc `proc_name_node`*():`proc_return_type_node` {.self.} = ## generated getter
+      self.`storage_name_node`
 
 
 proc handle_contract_interface(in_stmts: NimNode): NimNode = 
@@ -236,7 +236,7 @@ proc handle_contract_interface(in_stmts: NimNode): NimNode =
     function_signatures = newSeq[FunctionSignature]()
     global_ctx = GlobalContext()
 
-  main_out_stmts.add(get_util_functions())
+  main_out_stmts.add(getAst(get_util_functions()))
   # var util_funcs = get_util_functions()
   # discard util_funcs
 
@@ -328,43 +328,23 @@ proc handle_contract_interface(in_stmts: NimNode): NimNode =
       call_and_copy_block.add(parseStmt("assertNotPayable()"))
 
     for idx, param in func_sig.inputs:
-      var static_param_size = get_byte_size_of(param.var_type)
-      var tmp_var_name = fmt"{func_sig.name}_param_{idx}"
-      var tmp_var_converted_name = fmt"{func_sig.name}_param_{idx}_converted"
+      var
+        static_param_size = get_byte_size_of(param.var_type)
+        tmp_var_name = fmt"{func_sig.name}_param_{idx}"
+        tmp_var_converted_name = fmt"{func_sig.name}_param_{idx}_converted"
       # var <tmp_name>: <type>
       call_and_copy_block.add(
-        nnkVarSection.newTree(
-          nnkIdentDefs.newTree(
-            newIdentNode(tmp_var_name),
-            nnkBracketExpr.newTree(
-              newIdentNode("array"),
-              newLit(static_param_size),
-              newIdentNode("byte")
-            ),
-            newEmptyNode()
-          )
-        )
-      )
-      # callDataCopy(addr <tmp_name>, <offset>, <len>)
-      call_and_copy_block.add(
-        nnkCall.newTree(
-          newIdentNode("callDataCopy"),
-          nnkCommand.newTree(
-            newIdentNode("addr"),
-            newIdentNode(tmp_var_name)
-          ),
-          newLit(start_offset),
-          newLit(static_param_size)
-        )
-      )
-      
+        parseStmt(unindent(fmt"""
+          var {tmp_var_name} {{.noinit.}}: array[32, byte]
+          callDataCopy(addr {tmp_var_name}, 4, 32)
+        """)))
+
       # Get conversion code if necessary.
       let (ident_node, convert_node) = get_local_input_type_conversion(
         tmp_var_name,
         tmp_var_converted_name,
         param.var_type
       )
-      echo treeRepr(ident_node)
       if  not (ident_node.kind == nnkEmpty):
         if not (convert_node.kind == nnkEmpty):
           call_and_copy_block.add(convert_node)
