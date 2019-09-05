@@ -1,9 +1,0 @@
-[submodule "vendors/stint"]
-	path = vendors/stint
-	url = https://github.com/status-im/nim-stint.git
-[submodule "vendors/nimcrypto"]
-	path = vendors/nimcrypto
-	url = https://github.com/cheatfate/nimcrypto.git
-[submodule "vendors/nim-stew"]
-	path = vendors/nim-stew
-	url = https://github.com/status-im/nim-stew.git

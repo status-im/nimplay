@@ -100,8 +100,8 @@ def main(contract_file, get_shell=False):
     construct_txn = contract_.constructor().buildTransaction({
         'from': acct.address,
         'nonce': w3.eth.getTransactionCount(acct.address),
-        'gas': 2000000,
-        'gasPrice': w3.toWei('1', 'gwei')}
+        # 'gas': 8 * 10**6,
+        'gasPrice': w3.toWei('1', 'wei')}
     )
 
     # Deploy
@@ -118,6 +118,11 @@ def main(contract_file, get_shell=False):
     print(receipt)
 
     if get_shell:
+        contract_ = w3.eth.contract(
+            abi=abi,
+            address=receipt["contractAddress"]
+        )
+        print('Contract located on contract_ variable.')
         import pdb; pdb.set_trace()
 
 
