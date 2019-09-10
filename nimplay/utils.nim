@@ -9,11 +9,14 @@ import
 proc raiseParserError*(in_msg: string, line_info: LineInfo) =
   var out_msg = "\n\n" & line_info.filename & "\n"
   var line_no = 1
+  var line_no_prefix = $line_no & ":"
   var file_str = staticRead(line_info.filename)
   for line in file_str.splitLines():
     if line_no == line_info.line:
-      out_msg &= line & "\n"
-      out_msg &= "-".repeat(line_info.column) & "^\n"
+      line_no_prefix = $line_no & ":"
+      out_msg &= line_no_prefix
+      out_msg &=  line & "\n"
+      out_msg &= "-".repeat(line_info.column + line_no_prefix.len) & "^\n"
       break
     inc(line_no)
   out_msg &= "PlayParserError: " & in_msg & "\n\n"

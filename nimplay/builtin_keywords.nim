@@ -62,11 +62,21 @@ proc has_self_assignment(node: NimNode, global_ctx: GlobalContext): bool =
   return false
 
 
+proc has_self_storage_table(node: NimNode, global_ctx: GlobalContext): bool =
+  if node.kind == nnkAsgn and node[0].kind == nnkBracketExpr:
+    if is_dot_variable(node[0][0]) and node[0][0][0].strVal == "self":
+      echo treeRepr(node)
+      return true
+  return false
+
+
 proc is_keyword(node: NimNode, global_ctx: GlobalContext): (bool, string) =
   if is_message_sender(node):
     return (true, "msg.sender")
   if is_message_value(node):
     return (true, "msg.value")
+  elif has_self_storage_table(node, global_ctx):
+    return (true, "set_table_self."& strVal(node[0][0][1]))
   elif has_self_assignment(node, global_ctx):
     return (true, "set_self." & strVal(node[0][1]))
   elif has_self(node, global_ctx):
@@ -80,7 +90,11 @@ proc is_keyword(node: NimNode, global_ctx: GlobalContext): (bool, string) =
 proc find_builtin_keywords(func_body: NimNode, used_keywords: var seq[string], global_ctx: GlobalContext) =
   for child in func_body:
     let (is_kw, kw_key_name) = is_keyword(child, global_ctx)
-    if is_kw and not ("set_" & kw_key_name in used_keywords):
+    var setter_kw = false
+    for proposed_setter_kw in @["set_" & kw_key_name, "set_table_" & kw_key_name]:
+      if proposed_setter_kw in used_keywords:
+        setter_kw = true
+    if is_kw and not setter_kw:
         used_keywords.add(kw_key_name)
     find_builtin_keywords(child, used_keywords, global_ctx)
 
@@ -121,28 +135,25 @@ proc generate_defines(keywords: seq[string], global_ctx: GlobalContext): (NimNod
     if kw.startsWith("log."):
       var (new_proc, new_proc_name) = generate_log_func(kw, global_ctx)
       tmp_vars[kw] = new_proc_name
-      stmts.add(
-        new_proc
-      )
+      stmts.add(new_proc)
     elif kw.startsWith("set_self."):
       var (new_proc, new_proc_name) = generate_storage_set_func(kw, global_ctx)
       tmp_vars[kw] = new_proc_name
-      stmts.add(
-        new_proc
-      )
+      stmts.add(new_proc)
+    elif kw.startsWith("set_table_self."):
+      var (new_proc, new_proc_name) = generate_storage_table_func(kw, global_ctx)
+      tmp_vars[kw] = new_proc_name
+      stmts.add(new_proc)
     elif kw.startsWith("self."):
       var (new_proc, new_proc_name) = generate_storage_get_func(kw, global_ctx)
       tmp_vars[kw] = new_proc_name
-      stmts.add(
-        new_proc
-      )
-
+      stmts.add(new_proc)
   return (stmts, tmp_vars)
 
-  
+
 proc check_keyword_defines(keywords_used: seq[string], local_ctx: LocalContext) =
   for keyword in keywords_used:
-    var base = keyword.replace("set_", "")
+    var base = keyword.replace("set_", "").replace("table_", "")
     if "." in base:
       base = base.split(".")[0]
     if not (base in local_ctx.sig.pragma_base_keywords):
@@ -156,6 +167,8 @@ proc get_keyword_defines*(proc_def: NimNode, global_ctx: GlobalContext, local_ct
   var
     keywords_used: seq[string]
   find_builtin_keywords(proc_def, keywords_used, global_ctx)
+  echo keywords_used
+  echo "%^%^%^%^%^"
   keywords_used = deduplicate(keywords_used)
   check_keyword_defines(keywords_used, local_ctx)
   let (global_define_stmts, global_keyword_map) = generate_defines(keywords_used, global_ctx)
@@ -171,7 +184,17 @@ proc get_next_storage_node(kw_key_name: string, global_keyword_map: Table[string
       newIdentNode(global_keyword_map[kw_key_name]),
       current_node[1]
     )
+  elif kw_key_name.startsWith("set_table_self."):
+    var call_func = nnkCall.newTree(
+      newIdentNode(global_keyword_map[kw_key_name]),
+    )
+    for param in current_node[0][1..current_node.len - 1]:  # key params
+      call_func.add(param)
+    call_func.add(current_node[1])  # val param
+    echo treeRepr(call_func)
+    return call_func
   else:
+
     raise newException(ParserError, "Unknown global self keyword")
 
 

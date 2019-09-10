@@ -19,6 +19,7 @@ type
   VariableType* = object
     name*: string
     var_type*: string
+    key_types*: seq[string]
     slot*: int64
 
 type

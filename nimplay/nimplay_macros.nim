@@ -112,9 +112,28 @@ proc generate_context(proc_def: NimNode, global_ctx: GlobalContext): LocalContex
   (ctx.keyword_define_stmts, ctx.global_keyword_map) = get_keyword_defines(proc_def, global_ctx, ctx)
   return ctx
 
+proc handle_global_storage_tables(table_def: NimNode, global_ctx :var GlobalContext, slot_number: var int)  =
+  expectKind(table_def, nnkCall)
+  var
+    key_types: seq[string]
+    var_name = strVal(table_def[0])
+    var_types = table_def[1][0]
 
-proc handle_global_defines(var_section: NimNode, global_ctx :var GlobalContext)  =
-  var slot_number = 0
+  for x in var_types[1..var_types.len - 1]:
+    key_types.add(strVal(x))
+
+  var var_struct = VariableType(
+    name: var_name,
+    var_type: "StorageTable",
+    key_types: key_types,
+    slot: slot_number
+  )
+  global_ctx.global_variables[var_name] = var_struct
+  inc(slot_number)
+
+
+proc handle_global_defines(var_section: NimNode, global_ctx :var GlobalContext, slot_number: var int)  =
+
   for child in var_section:
     case child.kind
     of nnkIdentDefs:
@@ -219,6 +238,43 @@ template get_util_functions() {.dirty.} =
     if Uint128.fromBytesBE(b) > 0.stuint(128):
       revert(nil, 0)
 
+  proc exit_message(s: string) =
+    revert(cstring(s), s.len.int32)
+
+  proc concat[I1, I2: static[int]; T](a: array[I1, T], b: array[I2, T]): array[I1 + I2, T] =
+    result[0..a.high] = a
+    result[a.len..result.high] = b
+
+  proc setTableValue[N](table_id: int32, key: array[N, byte], value: var bytes32) =
+    type CombinedKey {.packed.} = object
+      table_id: int32
+      key: array[N, byte]
+
+    var
+      sha256_address: array[20, byte]
+      combined_key: CombinedKey
+      hashed_key: bytes32
+
+    sha256_address[19] = 2'u8
+    combined_key.table_id = table_id
+    combined_key.key = key
+
+    var res = call(
+      getGasLeft(), # gas
+      addr sha256_address,  # addressOffset (ptr)
+      nil,  # valueOffset (ptr)
+      addr combined_key, # dataOffset (ptr)
+      sizeof(combined_key).int32, # dataLength
+    )
+    if res == 1:  # call failed
+      exit_message("Could not call sha256 in setTableValue")
+      # raise newException(Exception, "Could not call sha256 in setTableValue")
+    if getReturnDataSize() != 32.int32:
+        exit_message("Could not call sha256, Incorrect return size")
+
+    returnDataCopy(addr hashed_key, 0.int32, 32.int32)
+    storageStore(hashed_key, addr value)
+
 
 proc get_getter_func(var_struct: VariableType): NimNode =
   let
@@ -239,10 +295,15 @@ proc handle_contract_interface(in_stmts: NimNode): NimNode =
   main_out_stmts.add(getAst(get_util_functions()))
   # var util_funcs = get_util_functions()
   # discard util_funcs
-
+  var slot_number = 0
   for child in in_stmts:
+    if child.kind == nnkCall and child[1].kind == nnkStmtList and child[1][0].kind == nnkBracketExpr:
+      if strVal(child[1][0][0]) == "StorageTable":
+        handle_global_storage_tables(child, global_ctx, slot_number)
+      else:
+        raiseParserError("Unsupported global definition.", child)
     if child.kind == nnkVarSection:
-      handle_global_defines(child, global_ctx)
+      handle_global_defines(child, global_ctx, slot_number)
 
   # Inject getter functions if needed.
   if  global_ctx.getter_funcs.len > 0:
@@ -333,11 +394,14 @@ proc handle_contract_interface(in_stmts: NimNode): NimNode =
         tmp_var_name = fmt"{func_sig.name}_param_{idx}"
         tmp_var_converted_name = fmt"{func_sig.name}_param_{idx}_converted"
       # var <tmp_name>: <type>
+      # callDataCopy(addr <tmp_name>, <offset>, <len>)
       call_and_copy_block.add(
         parseStmt(unindent(fmt"""
-          var {tmp_var_name} {{.noinit.}}: array[32, byte]
-          callDataCopy(addr {tmp_var_name}, 4, 32)
-        """)))
+          var {tmp_var_name} {{.noinit.}}: array[{static_param_size}, byte]
+          callDataCopy(addr {tmp_var_name}, {start_offset}, {static_param_size})
+        """)
+        )
+      )
 
       # Get conversion code if necessary.
       let (ident_node, convert_node) = get_local_input_type_conversion(

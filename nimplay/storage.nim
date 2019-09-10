@@ -61,6 +61,27 @@ proc generate_storage_get_func*(storage_keword: string, global_ctx: GlobalContex
       return tmp
     """)
     return (new_proc, new_proc_name)
+  # elif var_info.var_type == "StorageTable":
+  #   var
+  #     key_param_arr: seq[string]
+  #     value_type = var_info.key_types[^1]
+  #     table_id = var_info.slot
+  #     key_count = 0
+  #   for x in var_info.key_types[0..^1]:
+  #     key_param_arr.add(
+  #       fmt"key{key_count}:" & x
+  #     )
+  #     inc(key_count)
+
+  #   var new_proc = parseStmt(fmt"""
+  #   proc {new_proc_name}({key_param_arr.join(",")}): {value_type} =
+  #     var
+  #       tmp {{.noinit.}}: bytes32
+  #       pos = {$slot_number}.stuint(32).toByteArrayBE
+  #     storageLoad(pos, addr tmp)
+  #     return tmp
+  #   """)
+  #   return (new_proc, new_proc_name) 
   else:
     raise newException(ParserError, var_info.var_type & " storage is not supported at the moment.")
 
@@ -113,3 +134,33 @@ proc generate_storage_set_func*(storage_keyword: string, global_ctx: GlobalConte
     return (new_proc, new_proc_name)
   else:
     raise newException(ParserError, var_info.var_type & " storage is not supported at the moment.")
+
+
+proc generate_storage_table_func*(storage_keyword: string, global_ctx: GlobalContext): (NimNode, string) =
+  var
+    key_param_arr: seq[string]
+    global_var_name = storage_keyword.split(".")[1]
+    var_info = global_ctx.global_variables[global_var_name]
+    new_proc_name = fmt"set_{global_var_name}_in_storage"
+    value_type = var_info.key_types[^1]
+    table_id = var_info.slot
+    key_count = 0
+    combined_key = ""
+
+  for x in var_info.key_types[0..^2]:
+    key_param_arr.add(
+      fmt"key{key_count}: " & x
+    )
+    inc(key_count)
+
+  if key_param_arr.len == 1:
+    combined_key = "key0"
+  else:
+     raise newException(ParserError, "Only one key storage is supported at the moment.")
+
+  var new_proc = parseStmt(fmt"""
+    proc {new_proc_name}({key_param_arr.join(",")}, val: {var_info.key_types[^1]}) =
+      var tmp_val = val
+      setTableValue({table_id}.int32, {combined_key}, tmp_val)
+    """)
+  return (new_proc, new_proc_name)
