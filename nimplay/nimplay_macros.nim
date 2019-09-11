@@ -238,22 +238,21 @@ template get_util_functions() {.dirty.} =
     if Uint128.fromBytesBE(b) > 0.stuint(128):
       revert(nil, 0)
 
-  proc exit_message(s: string) =
+  proc exitMessage(s: string) =
     revert(cstring(s), s.len.int32)
 
   proc concat[I1, I2: static[int]; T](a: array[I1, T], b: array[I2, T]): array[I1 + I2, T] =
     result[0..a.high] = a
     result[a.len..result.high] = b
 
-  proc setTableValue[N](table_id: int32, key: array[N, byte], value: var bytes32) =
+  proc getHashedKey[N](table_id: int32, key: array[N, byte]): bytes32 =
     type CombinedKey {.packed.} = object
       table_id: int32
       key: array[N, byte]
-
     var
-      sha256_address: array[20, byte]
+      hashed_key {.noinit.}: bytes32
       combined_key: CombinedKey
-      hashed_key: bytes32
+      sha256_address: array[20, byte]
 
     sha256_address[19] = 2'u8
     combined_key.table_id = table_id
@@ -267,13 +266,24 @@ template get_util_functions() {.dirty.} =
       sizeof(combined_key).int32, # dataLength
     )
     if res == 1:  # call failed
-      exit_message("Could not call sha256 in setTableValue")
+      exitMessage("Could not call sha256 in setTableValue")
       # raise newException(Exception, "Could not call sha256 in setTableValue")
     if getReturnDataSize() != 32.int32:
-        exit_message("Could not call sha256, Incorrect return size")
-
+        exitMessage("Could not call sha256, Incorrect return size")
     returnDataCopy(addr hashed_key, 0.int32, 32.int32)
+
+    hashed_key  # return
+
+  proc setTableValue[N](table_id: int32, key: array[N, byte], value: var bytes32) =
+    var hashed_key = getHashedKey(table_id, key)
     storageStore(hashed_key, addr value)
+
+  proc getTableValue[N](table_id: int32, key: array[N, byte], ): bytes32 =
+    var
+      value: bytes32
+      hashed_key: bytes32 = getHashedKey(table_id, key)
+    storageLoad(hashed_key, addr value)
+    value  # return
 
 
 proc get_getter_func(var_struct: VariableType): NimNode =
