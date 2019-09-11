@@ -31,6 +31,7 @@ make USE_NLVM=1 examples
 ```
 git submodule update --init
 make get-wabt
+make tools
 make get-nimclang-docker 
 ```
 
