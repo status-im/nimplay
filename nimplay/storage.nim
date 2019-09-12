@@ -3,7 +3,7 @@ import strformat
 import strutils
 import tables
 
-import ./types
+import ./types, ./utils
 
 
 proc generate_storage_get_func*(storage_keyword: string, global_ctx: GlobalContext): (NimNode, string) =
@@ -115,60 +115,80 @@ proc generate_storage_set_func*(storage_keyword: string, global_ctx: GlobalConte
     raise newException(ParserError, var_info.var_type & " storage is not supported at the moment.")
 
 
+proc get_combined_key_info(var_info: VariableType): (string, seq[string], string, int) =
+  var
+    value_conversion = ""
+    key_param_arr: seq[string]
+    key_copy_block: string
+    total_key_size = 0
+    key_count = 0
+
+  for key_type in var_info.key_types[0..^2]:
+    var current_key_name = fmt"key{key_count}"
+    key_param_arr.add(
+      fmt"{current_key_name}: " & key_type
+    )
+    key_copy_block.add(
+      fmt"      copy_into_ba(combined_key, {total_key_size}, {current_key_name})" & '\n'
+    )
+    inc(key_count)
+    total_key_size += get_memory_byte_size_of(key_type)
+
+  (value_conversion, key_param_arr, key_copy_block, total_key_size)
+
+
 proc generate_storage_table_set_func*(storage_keyword: string, global_ctx: GlobalContext): (NimNode, string) =
   var
-    key_param_arr: seq[string]
     global_var_name = storage_keyword.split(".")[1]
     var_info = global_ctx.global_variables[global_var_name]
     new_proc_name = fmt"set_{global_var_name}_in_storage_table"
     value_type = var_info.key_types[^1]
     table_id = var_info.slot
-    key_count = 0
-    combined_key = ""
+    (value_conversion, key_param_arr, key_copy_block, total_key_size) = get_combined_key_info(var_info)
 
-  for x in var_info.key_types[0..^2]:
-    key_param_arr.add(
-      fmt"key{key_count}: " & x
-    )
-    inc(key_count)
-
-  if key_param_arr.len == 1:
-    combined_key = "key0"
+  if value_type == "bytes32":
+    value_conversion = "val"
+  elif value_type in @["wei_value", "uint128"]:
+    value_conversion = "val.to_bytes32"
   else:
-     raise newException(ParserError, "Only one key storage is supported at the moment.")
+    raise newException(ParserError, "Unsupported '{value_type}' value type.")
 
-  var new_proc = parseStmt(fmt"""
+  var s = fmt"""
     proc {new_proc_name}({key_param_arr.join(",")}, val: {value_type}) =
-      var tmp_val = val
-      setTableValue({table_id}.int32, {combined_key}, tmp_val)
-    """)
+      var
+        tmp_val = {value_conversion}
+        combined_key {{.noinit.}}: array[{total_key_size}, byte]
+{key_copy_block}
+      setTableValue({table_id}.int32, combined_key, tmp_val)
+    """
+  echo s
+  var new_proc = parseStmt(s)
   return (new_proc, new_proc_name)
 
 
 proc generate_storage_table_get_func*(storage_keyword: string, global_ctx: GlobalContext): (NimNode, string) =
   var
-    key_param_arr: seq[string]
     global_var_name = storage_keyword.split(".")[1]
     new_proc_name = fmt"get_{global_var_name}_in_storage_table"
     var_info = global_ctx.global_variables[global_var_name]
     value_type = var_info.key_types[^1]
     table_id = var_info.slot
-    key_count = 0
-    combined_key = ""
+    (value_conversion, key_param_arr, key_copy_block, total_key_size) = get_combined_key_info(var_info)
 
-  for x in var_info.key_types[0..^2]:
-    key_param_arr.add(
-      fmt"key{key_count}: " & x
-    )
-    inc(key_count)
-
-  if key_param_arr.len == 1:
-    combined_key = "key0"
+  if value_type == "bytes32":
+    value_conversion = "tmp_val"
+  elif value_type in @["wei_value", "uint128"]:
+    value_conversion = "tmp_val.to_uint128"
   else:
-     raise newException(ParserError, "Only one key storage is supported at the moment.")
+    raise newException(ParserError, "Unsupported StorageTable '{value_type}' value type.")
 
   var new_proc = parseStmt(fmt"""
     proc {new_proc_name}({key_param_arr.join(",")}): {value_type} =
-      getTableValue({table_id}.int32, {combined_key})
+      var
+        tmp_val: bytes32
+        combined_key {{.noinit.}}: array[{total_key_size}, byte]
+{key_copy_block}
+      tmp_val = getTableValue({table_id}.int32, combined_key)
+      {value_conversion}
     """)
   return (new_proc, new_proc_name)

@@ -75,6 +75,18 @@ proc get_byte_size_of*(type_str: string): int =
   else:
     raise newException(ParserError, fmt"Unknown '{type_str}' type supplied!")
 
+
+proc get_memory_byte_size_of*(type_str: string): int =
+  if type_str in @["uint256", "bytes32"]:
+    return 32
+  elif type_str in @["address"]:
+    return 20
+  elif type_str in @["uint128", "int128", "wei_value"]:
+    return 16
+  else:
+    raise newException(ParserError, fmt"Unknown '{type_str}' type supplied!")
+
+
 func get_bit_size_of*(type_str: string): int =
   get_byte_size_of(type_str) * 8
 

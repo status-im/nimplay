@@ -232,6 +232,20 @@ template get_util_functions() {.dirty.} =
     for i, x in from_ba:
       to_ba[offset + i] = x
 
+  func to_bytes32(a: uint128): bytes32 =
+    var
+      tmp: bytes32
+    copy_into_ba(tmp, 0, a.toBytesLE)
+    tmp
+
+  func to_uint128(a: bytes32): uint128 =
+    var
+      tmp_ba: array[32, byte]
+      tmp: uint128
+    copy_into_ba(tmp_ba, 0, a)
+    tmp = fromBytes(Uint128, tmp_ba)
+    tmp
+
   proc assertNotPayable() =
     var b {.noinit.}: array[16, byte]
     getCallValue(addr b)

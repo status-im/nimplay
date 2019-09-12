@@ -48,14 +48,3 @@ contract("MapStorage"):
       val: bytes32
     val[31] = 0x75'u8
     setTableValue(0.int32, key, val)
-
-# tx = contract_.functions.test().buildTransaction({'from': acct.address, 'nonce': w3.eth.getTransactionCount(acct.address)})
-# signed = acct.signTransaction(tx)
-# tx_hash = w3.eth.sendRawTransaction(signed.rawTransaction)
-# receipt = w3.eth.waitForTransactionReceipt(tx_hash)
-
-
-# tx = contract_.functions.set_name(b"key", b"value").buildTransaction({'from': acct.address, 'nonce': w3.eth.getTransactionCount(acct.address)})
-# signed = acct.signTransaction(tx)
-# tx_hash = w3.eth.sendRawTransaction(signed.rawTransaction)
-# receipt = w3.eth.waitForTransactionReceipt(tx_hash)
