@@ -61,12 +61,12 @@ vendors:
 
 .PHONY: king_of_the_hill
 king_of_the_hill:
-# 	$(WASM32_NIMC) --out:examples/king_of_the_hill.wasm examples/king_of_the_hill.nim
-# 	$(POSTPROCESS) examples/king_of_the_hill.wasm
-# 	$(WASM32_NIMC) --out:examples/map.wasm examples/map.nim
-# 	$(POSTPROCESS) examples/map.wasm
-	$(WASM32_NIMC) --out:examples/balances.wasm examples/balances.nim
-	$(POSTPROCESS) examples/balances.wasm
+	$(WASM32_NIMC) --out:examples/king_of_the_hill.wasm examples/king_of_the_hill.nim
+	$(POSTPROCESS) examples/king_of_the_hill.wasm
 
 .PHONY: examples
 examples: king_of_the_hill
+	$(WASM32_NIMC) --out:examples/registry.wasm examples/registry.nim
+	$(POSTPROCESS) examples/registry.wasm
+	$(WASM32_NIMC) --out:examples/balances.wasm examples/balances.nim
+	$(POSTPROCESS) examples/balances.wasm
