@@ -73,3 +73,19 @@ contract("Main"):
     proc nameGiven(name: bytes32, address {.indexed.}: uint128) {.event.}
 
 ```
+
+# Mappings
+
+Nimplay uses `StorageTable` type to indicated a mapping.
+
+```nim
+contract("Registry"):
+
+  names: StorageTable[bytes32, bytes32]
+
+  proc set_name*(k: bytes32, v: bytes32) {.self.} =
+    self.names[k] = v
+
+  proc get_name*(k: bytes32): bytes32 {.self.} =
+    self.names[k]
+```
