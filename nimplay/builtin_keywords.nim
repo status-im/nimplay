@@ -1,10 +1,26 @@
 import
   macros, strformat, tables,
-  strutils, sequtils
+  strutils, sequtils, algorithm
 
 import
   ./types, ./utils, ./storage,
   ./logging
+
+
+proc extract_keys(base_node: NimNode, keys: var seq[NimNode]) =
+  for x in base_node:
+    if x.kind == nnkBracketExpr:
+      extract_keys(x, keys)
+    else:
+      keys.add(x)
+
+
+proc check_global_exists(global_ctx: GlobalContext, var_name: string, node: NimNode) =
+  if not (var_name in global_ctx.global_variables):
+    raiseParserError(
+      fmt"Invalid global variable {var_name}, has not been defined.",
+      node
+    )
 
 
 proc is_dot_variable(node: NimNode): bool =
@@ -30,13 +46,9 @@ proc is_message_value(node: NimNode): bool =
 
 proc has_self(node: NimNode, global_ctx: GlobalContext): bool =
   if is_dot_variable(node) and node[0].strVal == "self":
+    global_ctx.check_global_exists(node[1].strVal, node)
     if node[1].strVal in global_ctx.global_variables:
       return true
-    else:
-      raiseParserError(
-        fmt"Invalid global variable {node[1].strVal}, has not been defined.", 
-        node
-      )
   return false
 
 
@@ -55,19 +67,46 @@ proc is_log_statement(node: NimNode, global_ctx: GlobalContext): bool =
         )
 
 
-proc has_self_assignment(node: NimNode, global_ctx: GlobalContext): bool =
+proc has_self_assignment(node: NimNode): bool =
   if node.kind == nnkAsgn:
     if is_dot_variable(node[0]) and node[0][0].strVal == "self":
       return true
   return false
 
 
+proc has_self_storage_table_set(node: NimNode, global_ctx: GlobalContext): (bool, NimNode) =
+  var n: NimNode
+  if node.kind == nnkAsgn and node[0].kind == nnkBracketExpr:
+    var keys: seq[NimNode]
+    extract_keys(node[0], keys)
+    if keys.len > 0 and is_dot_variable(keys[0]) and strVal(keys[0][0]) == "self":
+      return (true, keys[0])
+  return (false, n)
+
+
+proc has_self_storage_table_get(node: NimNode, global_ctx: GlobalContext): (bool, NimNode) =
+  var n: NimNode
+  if node.kind == nnkBracketExpr:
+    var keys: seq[NimNode]
+    extract_keys(node, keys)
+    if keys.len > 0 and is_dot_variable(keys[0]) and strVal(keys[0][0]) == "self":
+      return (true, keys[0])
+  return (false, node)
+
+
 proc is_keyword(node: NimNode, global_ctx: GlobalContext): (bool, string) =
+  var 
+    (valid, sub_node) = has_self_storage_table_set(node, global_ctx)
+  if valid:
+    return (true, "set_table_self." & strVal(sub_node[1]))
+  (valid, sub_node) = has_self_storage_table_get(node, global_ctx)
+  if valid:
+    return (true, "get_table_self." & strVal(sub_node[1]))
   if is_message_sender(node):
     return (true, "msg.sender")
-  if is_message_value(node):
+  elif is_message_value(node):
     return (true, "msg.value")
-  elif has_self_assignment(node, global_ctx):
+  elif has_self_assignment(node):
     return (true, "set_self." & strVal(node[0][1]))
   elif has_self(node, global_ctx):
     return (true, "self." & strVal(node[1]))
@@ -78,9 +117,22 @@ proc is_keyword(node: NimNode, global_ctx: GlobalContext): (bool, string) =
 
 
 proc find_builtin_keywords(func_body: NimNode, used_keywords: var seq[string], global_ctx: GlobalContext) =
+
   for child in func_body:
     let (is_kw, kw_key_name) = is_keyword(child, global_ctx)
-    if is_kw and not ("set_" & kw_key_name in used_keywords):
+   
+    var
+      setter_kw = false
+      exemption_list = @[
+        "set_" & kw_key_name,
+        "set_table_" & kw_key_name,
+        "get_table_" & kw_key_name,
+      ]
+
+    for proposed_setter_kw in exemption_list:
+      if proposed_setter_kw in used_keywords:
+        setter_kw = true
+    if is_kw and not setter_kw:  # Should be added to globals list.
         used_keywords.add(kw_key_name)
     find_builtin_keywords(child, used_keywords, global_ctx)
 
@@ -106,9 +158,9 @@ proc generate_defines(keywords: seq[string], global_ctx: GlobalContext): (NimNod
   if "msg.value" in keywords:
     var tmp_func_name = fmt"msg_value_func"
     stmts.add(parseStmt("proc " & tmp_func_name & """(): uint128 =
-      var ba: array[16, byte]
+      var ba {.noinit.}: array[16, byte]
       getCallValue(addr ba)
-      var val: Stuint[128]
+      var val {.noinit.}: Stuint[128]
       {.pragma: restrict, codegenDecl: "$# __restrict $#".}
       let r_ptr {.restrict.} = cast[ptr array[128, byte]](addr val)
       for i, b in ba:
@@ -121,28 +173,29 @@ proc generate_defines(keywords: seq[string], global_ctx: GlobalContext): (NimNod
     if kw.startsWith("log."):
       var (new_proc, new_proc_name) = generate_log_func(kw, global_ctx)
       tmp_vars[kw] = new_proc_name
-      stmts.add(
-        new_proc
-      )
+      stmts.add(new_proc)
     elif kw.startsWith("set_self."):
       var (new_proc, new_proc_name) = generate_storage_set_func(kw, global_ctx)
       tmp_vars[kw] = new_proc_name
-      stmts.add(
-        new_proc
-      )
+      stmts.add(new_proc)
+    elif kw.startsWith("set_table_self."):
+      var (new_proc, new_proc_name) = generate_storage_table_set_func(kw, global_ctx)
+      tmp_vars[kw] = new_proc_name
+      stmts.add(new_proc)
+    elif kw.startsWith("get_table_self."):
+      var (new_proc, new_proc_name) = generate_storage_table_get_func(kw, global_ctx)
+      tmp_vars[kw] = new_proc_name
+      stmts.add(new_proc)
     elif kw.startsWith("self."):
       var (new_proc, new_proc_name) = generate_storage_get_func(kw, global_ctx)
       tmp_vars[kw] = new_proc_name
-      stmts.add(
-        new_proc
-      )
-
+      stmts.add(new_proc)
   return (stmts, tmp_vars)
 
-  
+
 proc check_keyword_defines(keywords_used: seq[string], local_ctx: LocalContext) =
   for keyword in keywords_used:
-    var base = keyword.replace("set_", "")
+    var base = keyword.replace("set_", "").replace("get_", "").replace("table_", "")
     if "." in base:
       base = base.split(".")[0]
     if not (base in local_ctx.sig.pragma_base_keywords):
@@ -161,6 +214,7 @@ proc get_keyword_defines*(proc_def: NimNode, global_ctx: GlobalContext, local_ct
   let (global_define_stmts, global_keyword_map) = generate_defines(keywords_used, global_ctx)
   return (global_define_stmts, global_keyword_map)
 
+
 proc get_next_storage_node(kw_key_name: string, global_keyword_map: Table[string, string], current_node: NimNode): NimNode =
   if kw_key_name.startsWith("self."):
     return nnkCall.newTree(
@@ -170,7 +224,28 @@ proc get_next_storage_node(kw_key_name: string, global_keyword_map: Table[string
     return nnkCall.newTree(
       newIdentNode(global_keyword_map[kw_key_name]),
       current_node[1]
-    )
+      )
+  elif kw_key_name.startsWith("get_table_self."):
+    var 
+      keys: seq[NimNode]
+      call_func = nnkCall.newTree(
+        newIdentNode(global_keyword_map[kw_key_name]),
+      )
+    extract_keys(current_node, keys)
+    for param in keys[1..keys.len - 1]:
+      call_func.add(param)
+    return call_func
+  elif kw_key_name.startsWith("set_table_self."):
+    var 
+      keys: seq[NimNode]
+      call_func = nnkCall.newTree(
+        newIdentNode(global_keyword_map[kw_key_name]),
+      )
+    extract_keys(current_node[0], keys)
+    for param in keys[1..^1]:
+      call_func.add(param)
+    call_func.add(current_node[1])  # val param
+    return call_func
   else:
     raise newException(ParserError, "Unknown global self keyword")
 

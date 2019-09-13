@@ -25,7 +25,6 @@ proc get_func_name(proc_def: NimNode): string =
 proc get_local_input_type_conversion(tmp_var_name, tmp_var_converted_name, var_type: string): (NimNode, NimNode) =
   case var_type
   of "uint256", "uint128":
-    echo var_type
     var convert_node = nnkLetSection.newTree(
       nnkIdentDefs.newTree(
         newIdentNode(tmp_var_converted_name),
@@ -67,7 +66,7 @@ proc get_local_output_type_conversion(tmp_result_name, tmp_result_converted_name
   of "uint128", "wei_value":
     var ident_node = newIdentNode(tmp_result_converted_name)
     var conversion_node = parseStmt(unindent(fmt"""
-      var {tmp_result_converted_name}: array[32, byte]
+      var {tmp_result_converted_name} {{.noinit.}}: array[32, byte]
       {tmp_result_converted_name}[16..31] = toByteArrayBE({tmp_result_name})
     """))
     return (ident_node, conversion_node)
@@ -112,9 +111,28 @@ proc generate_context(proc_def: NimNode, global_ctx: GlobalContext): LocalContex
   (ctx.keyword_define_stmts, ctx.global_keyword_map) = get_keyword_defines(proc_def, global_ctx, ctx)
   return ctx
 
+proc handle_global_storage_tables(table_def: NimNode, global_ctx :var GlobalContext, slot_number: var int)  =
+  expectKind(table_def, nnkCall)
+  var
+    key_types: seq[string]
+    var_name = strVal(table_def[0])
+    var_types = table_def[1][0]
 
-proc handle_global_defines(var_section: NimNode, global_ctx :var GlobalContext)  =
-  var slot_number = 0
+  for x in var_types[1..var_types.len - 1]:
+    key_types.add(strVal(x))
+
+  var var_struct = VariableType(
+    name: var_name,
+    var_type: "StorageTable",
+    key_types: key_types,
+    slot: slot_number
+  )
+  global_ctx.global_variables[var_name] = var_struct
+  inc(slot_number)
+
+
+proc handle_global_defines(var_section: NimNode, global_ctx :var GlobalContext, slot_number: var int)  =
+
   for child in var_section:
     case child.kind
     of nnkIdentDefs:
@@ -208,26 +226,87 @@ proc handle_event_defines(event_def: NimNode, global_ctx: var GlobalContext) =
   global_ctx.events[event_name] = event_sig
 
 
-proc get_util_functions(): NimNode =
-  quote do:
-    # template copy_into_ba(to_ba: var untyped, offset: int, from_ba: untyped) =
-    # proc copy_into_ba(to_ba: var auto, offset: int, from_ba: auto) =
-    proc copy_into_ba(to_ba: var auto, offset: int, from_ba: auto) =
-      for i, x in from_ba:
-        to_ba[offset + i] = x
+template get_util_functions() {.dirty.} =
+  proc copy_into_ba(to_ba: var auto, offset: int, from_ba: auto) =
+    for i, x in from_ba:
+      to_ba[offset + i] = x
 
-    proc assertNotPayable() =
-      var b {.noinit.}: array[16, byte]
-      getCallValue(addr b)
-      if Uint128.fromBytesBE(b) > 0.stuint(128):
-        revert(nil, 0)
+  func to_bytes32(a: uint128): bytes32 =
+    var
+      tmp: bytes32
+    copy_into_ba(tmp, 0, a.toBytesLE)
+    tmp
+
+  func to_uint128(a: bytes32): uint128 =
+    var
+      tmp_ba: array[32, byte]
+      tmp: uint128
+    copy_into_ba(tmp_ba, 0, a)
+    tmp = fromBytes(Uint128, tmp_ba)
+    tmp
+
+  proc assertNotPayable() =
+    var b {.noinit.}: array[16, byte]
+    getCallValue(addr b)
+    if Uint128.fromBytesBE(b) > 0.stuint(128):
+      revert(nil, 0)
+
+  proc exitMessage(s: string) =
+    revert(cstring(s), s.len.int32)
+
+  proc concat[I1, I2: static[int]; T](a: array[I1, T], b: array[I2, T]): array[I1 + I2, T] =
+    result[0..a.high] = a
+    result[a.len..result.high] = b
+
+  proc getHashedKey[N](table_id: int32, key: array[N, byte]): bytes32 =
+    type CombinedKey {.packed.} = object
+      table_id: int32
+      key: array[N, byte]
+    var
+      hashed_key {.noinit.}: bytes32
+      combined_key: CombinedKey
+      sha256_address: array[20, byte]
+
+    sha256_address[19] = 2'u8
+    combined_key.table_id = table_id
+    combined_key.key = key
+
+    var res = call(
+      getGasLeft(), # gas
+      addr sha256_address,  # addressOffset (ptr)
+      nil,  # valueOffset (ptr)
+      addr combined_key, # dataOffset (ptr)
+      sizeof(combined_key).int32, # dataLength
+    )
+    if res == 1:  # call failed
+      exitMessage("Could not call sha256 in setTableValue")
+      # raise newException(Exception, "Could not call sha256 in setTableValue")
+    if getReturnDataSize() != 32.int32:
+        exitMessage("Could not call sha256, Incorrect return size")
+    returnDataCopy(addr hashed_key, 0.int32, 32.int32)
+
+    hashed_key  # return
+
+  proc setTableValue[N](table_id: int32, key: array[N, byte], value: var bytes32) =
+    var hashed_key = getHashedKey(table_id, key)
+    storageStore(hashed_key, addr value)
+
+  proc getTableValue[N](table_id: int32, key: array[N, byte], ): bytes32 =
+    var
+      value: bytes32
+      hashed_key: bytes32 = getHashedKey(table_id, key)
+    storageLoad(hashed_key, addr value)
+    value  # return
 
 
 proc get_getter_func(var_struct: VariableType): NimNode =
-  parseStmt(fmt"""
-  proc {var_struct.name}*():{var_struct.var_type} {{.self.}} = ## generated getter
-    self.{var_struct.name}  
-  """)[0]
+  let
+    proc_name_node = newIdentNode(var_struct.name)
+    proc_return_type_node = newIdentNode(var_struct.var_type)
+    storage_name_node = newIdentNode(var_struct.name)
+  quote do:
+    proc `proc_name_node`*():`proc_return_type_node` {.self.} = ## generated getter
+      self.`storage_name_node`
 
 
 proc handle_contract_interface(in_stmts: NimNode): NimNode = 
@@ -236,13 +315,18 @@ proc handle_contract_interface(in_stmts: NimNode): NimNode =
     function_signatures = newSeq[FunctionSignature]()
     global_ctx = GlobalContext()
 
-  main_out_stmts.add(get_util_functions())
+  main_out_stmts.add(getAst(get_util_functions()))
   # var util_funcs = get_util_functions()
   # discard util_funcs
-
+  var slot_number = 0
   for child in in_stmts:
+    if child.kind == nnkCall and child[1].kind == nnkStmtList and child[1][0].kind == nnkBracketExpr:
+      if strVal(child[1][0][0]) == "StorageTable":
+        handle_global_storage_tables(child, global_ctx, slot_number)
+      else:
+        raiseParserError("Unsupported global definition.", child)
     if child.kind == nnkVarSection:
-      handle_global_defines(child, global_ctx)
+      handle_global_defines(child, global_ctx, slot_number)
 
   # Inject getter functions if needed.
   if  global_ctx.getter_funcs.len > 0:
@@ -328,43 +412,26 @@ proc handle_contract_interface(in_stmts: NimNode): NimNode =
       call_and_copy_block.add(parseStmt("assertNotPayable()"))
 
     for idx, param in func_sig.inputs:
-      var static_param_size = get_byte_size_of(param.var_type)
-      var tmp_var_name = fmt"{func_sig.name}_param_{idx}"
-      var tmp_var_converted_name = fmt"{func_sig.name}_param_{idx}_converted"
+      var
+        static_param_size = get_byte_size_of(param.var_type)
+        tmp_var_name = fmt"{func_sig.name}_param_{idx}"
+        tmp_var_converted_name = fmt"{func_sig.name}_param_{idx}_converted"
       # var <tmp_name>: <type>
-      call_and_copy_block.add(
-        nnkVarSection.newTree(
-          nnkIdentDefs.newTree(
-            newIdentNode(tmp_var_name),
-            nnkBracketExpr.newTree(
-              newIdentNode("array"),
-              newLit(static_param_size),
-              newIdentNode("byte")
-            ),
-            newEmptyNode()
-          )
-        )
-      )
       # callDataCopy(addr <tmp_name>, <offset>, <len>)
       call_and_copy_block.add(
-        nnkCall.newTree(
-          newIdentNode("callDataCopy"),
-          nnkCommand.newTree(
-            newIdentNode("addr"),
-            newIdentNode(tmp_var_name)
-          ),
-          newLit(start_offset),
-          newLit(static_param_size)
+        parseStmt(unindent(fmt"""
+          var {tmp_var_name} {{.noinit.}}: array[{static_param_size}, byte]
+          callDataCopy(addr {tmp_var_name}, {start_offset}, {static_param_size})
+        """)
         )
       )
-      
+
       # Get conversion code if necessary.
       let (ident_node, convert_node) = get_local_input_type_conversion(
         tmp_var_name,
         tmp_var_converted_name,
         param.var_type
       )
-      echo treeRepr(ident_node)
       if  not (ident_node.kind == nnkEmpty):
         if not (convert_node.kind == nnkEmpty):
           call_and_copy_block.add(convert_node)

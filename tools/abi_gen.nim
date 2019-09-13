@@ -91,8 +91,9 @@ proc generate_function_signature(proc_def: PNode): FunctionSignature =
         else:
           raise newException(Exception, "unknown param type")
     of nkPragma:
-      if child[0].kind == nkIdent and child[0].ident.s == "payable":
-        func_sig.payable = true
+      for pragma_child in child:
+        if pragma_child.kind == nkIdent and pragma_child.ident.s == "payable":
+          func_sig.payable = true
     else:
       discard
   return func_sig

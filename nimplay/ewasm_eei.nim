@@ -41,6 +41,9 @@ proc call*(gas: int64, addressOffset, valueOffset, dataOffset: pointer,
 ##   `dataLength` the length of data
 ## Returns:
 ##   0 on success, 1 on failure and 2 on `revert`
+proc call*(gas: int64, addressOffset, valueOffset, dataOffset: pointer,
+            dataLength: int32, resultOffset: pointer,
+            resultLength: int32): int32
 
 proc callDataCopy*(resultOffset: pointer, dataOffset, length: int32)
 ## Copies the input data in current environment to memory. This pertains to

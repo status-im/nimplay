@@ -1,7 +1,7 @@
 user_id :=$(shell id -u $(shell whoami))
 pwd=$(shell pwd)
 POSTPROCESS=tools/eth_postprocess.sh
-PATH_PARAMS=-p:/code/vendors/nimcrypto -p:/code/vendors/stint -p:/code/vendors/nim-stew/
+PATH_PARAMS=-p:/code/vendor/nimcrypto -p:/code/vendor/stint -p:/code/vendor/nim-stew/
 # Use NLVM
 DOCKER_NLVM=docker run -e HOME='/tmp/' --user $(user_id):$(user_id) -w /code/ -v $(pwd):/code/ jacqueswww/nlvm
 DOCKER_NLVM_C=$(DOCKER_NLVM) $(PATH_PARAMS) c
@@ -66,3 +66,7 @@ king_of_the_hill:
 
 .PHONY: examples
 examples: king_of_the_hill
+	$(WASM32_NIMC) --out:examples/registry.wasm examples/registry.nim
+	$(POSTPROCESS) examples/registry.wasm
+	$(WASM32_NIMC) --out:examples/balances.wasm examples/balances.nim
+	$(POSTPROCESS) examples/balances.wasm
