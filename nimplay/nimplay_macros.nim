@@ -25,7 +25,6 @@ proc get_func_name(proc_def: NimNode): string =
 proc get_local_input_type_conversion(tmp_var_name, tmp_var_converted_name, var_type: string): (NimNode, NimNode) =
   case var_type
   of "uint256", "uint128":
-    echo var_type
     var convert_node = nnkLetSection.newTree(
       nnkIdentDefs.newTree(
         newIdentNode(tmp_var_converted_name),

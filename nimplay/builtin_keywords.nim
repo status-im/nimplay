@@ -77,18 +77,15 @@ proc has_self_assignment(node: NimNode): bool =
 proc has_self_storage_table_set(node: NimNode, global_ctx: GlobalContext): (bool, NimNode) =
   var n: NimNode
   if node.kind == nnkAsgn and node[0].kind == nnkBracketExpr:
-    for x in node:
-      n = x
-      if is_dot_variable(n[0][0]) and n[0][0][0].strVal == "self":
-        var var_name = strVal(n[0][0][1])
-        global_ctx.check_global_exists(var_name, n[0][0][1])
-        return (true, n)
+    var keys: seq[NimNode]
+    extract_keys(node[0], keys)
+    if keys.len > 0 and is_dot_variable(keys[0]) and strVal(keys[0][0]) == "self":
+      return (true, keys[0])
   return (false, n)
 
 
 proc has_self_storage_table_get(node: NimNode, global_ctx: GlobalContext): (bool, NimNode) =
   var n: NimNode
-  echo treeRepr(node)
   if node.kind == nnkBracketExpr:
     var keys: seq[NimNode]
     extract_keys(node, keys)
@@ -98,16 +95,13 @@ proc has_self_storage_table_get(node: NimNode, global_ctx: GlobalContext): (bool
 
 
 proc is_keyword(node: NimNode, global_ctx: GlobalContext): (bool, string) =
-  # Check for table set.
   var 
     (valid, sub_node) = has_self_storage_table_set(node, global_ctx)
   if valid:
-    return (true, "set_table_self." & strVal(sub_node[0][0][1]))
-
+    return (true, "set_table_self." & strVal(sub_node[1]))
   (valid, sub_node) = has_self_storage_table_get(node, global_ctx)
   if valid:
     return (true, "get_table_self." & strVal(sub_node[1]))
-
   if is_message_sender(node):
     return (true, "msg.sender")
   elif is_message_value(node):
@@ -215,8 +209,6 @@ proc get_keyword_defines*(proc_def: NimNode, global_ctx: GlobalContext, local_ct
   var
     keywords_used: seq[string]
   find_builtin_keywords(proc_def, keywords_used, global_ctx)
-  echo keywords_used
-  echo "$%$%$%$%$%^^^^^^^^"
   keywords_used = deduplicate(keywords_used)
   check_keyword_defines(keywords_used, local_ctx)
   let (global_define_stmts, global_keyword_map) = generate_defines(keywords_used, global_ctx)
@@ -224,9 +216,6 @@ proc get_keyword_defines*(proc_def: NimNode, global_ctx: GlobalContext, local_ct
 
 
 proc get_next_storage_node(kw_key_name: string, global_keyword_map: Table[string, string], current_node: NimNode): NimNode =
-  echo global_keyword_map
-  echo kw_key_name
-  echo "%%.."
   if kw_key_name.startsWith("self."):
     return nnkCall.newTree(
       newIdentNode(global_keyword_map[kw_key_name])
