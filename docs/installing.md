@@ -14,10 +14,10 @@ make get-nimclang-docker
 To use NLVM instead of Nim + Clang use 
 
 ```
+make get-nlvm-docker
 git submodule update --init
 make get-wabt
 make USE_NLVM=1 tools
-make get-nlvm-docker
 ```
 
 ### Using NLVM docker
@@ -29,10 +29,10 @@ make USE_NLVM=1 examples
 ## Using Nim + Clang Docker
 
 ```
+make get-nimclang-docker 
 git submodule update --init
 make get-wabt
 make tools
-make get-nimclang-docker 
 ```
 
 ## Building the examples
