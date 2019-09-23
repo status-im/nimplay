@@ -43,7 +43,12 @@ proc get_local_input_type_conversion(tmp_var_name, tmp_var_converted_name, var_t
   of "bytes32":
     return (newIdentNode(tmp_var_name), newEmptyNode())
   of "address":
-    return (newEmptyNode(), newEmptyNode())
+    var convert_node = parseStmt(unindent(fmt"""
+      var {tmp_var_converted_name}: address
+      copy_into_ba({tmp_var_converted_name}, 12, {tmp_var_name})
+      """
+    ))
+    return (newIdentNode(tmp_var_converted_name), convert_node)
   else:
     raise newException(ParserError, fmt"Unknown '{var_type}' type supplied!")
 
@@ -229,6 +234,8 @@ proc handle_event_defines(event_def: NimNode, global_ctx: var GlobalContext) =
 template get_util_functions() {.dirty.} =
   proc copy_into_ba(to_ba: var auto, offset: int, from_ba: auto) =
     for i, x in from_ba:
+      if offset + i > sizeof(to_ba) - 1:
+        break
       to_ba[offset + i] = x
 
   func to_bytes32(a: uint128): bytes32 =
