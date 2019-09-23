@@ -24,14 +24,17 @@ proc get_func_name(proc_def: NimNode): string =
 
 proc get_local_input_type_conversion(tmp_var_name, tmp_var_converted_name, var_type: string): (NimNode, NimNode) =
   case var_type
-  of "uint256", "uint128":
+  of "uint256", "uint128", "wei_value":
+    var base_stint_type = "Uint256"
+    if var_type in @["uint128", "wei_value"]:
+      base_stint_type = "UInt128"
     var convert_node = nnkLetSection.newTree(
       nnkIdentDefs.newTree(
         newIdentNode(tmp_var_converted_name),
         newIdentNode(var_type),
         nnkCall.newTree(
           nnkDotExpr.newTree(
-            newIdentNode("Uint256"),
+            newIdentNode(base_stint_type),
             newIdentNode("fromBytesBE")
           ),
           newIdentNode(tmp_var_name)
@@ -50,7 +53,7 @@ proc get_local_input_type_conversion(tmp_var_name, tmp_var_converted_name, var_t
     ))
     return (newIdentNode(tmp_var_converted_name), convert_node)
   else:
-    raise newException(ParserError, fmt"Unknown '{var_type}' type supplied!")
+    raise newException(ParserError, fmt"get_local_input_type_conversion: Unknown '{var_type}' type supplied!")
 
 
 proc get_local_output_type_conversion(tmp_result_name, tmp_result_converted_name, var_type: string): (NimNode, NimNode) =
