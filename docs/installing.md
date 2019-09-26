@@ -31,9 +31,8 @@ make USE_NLVM=1 examples
 ```
 make get-nimclang-docker 
 git submodule update --init
-make get-wabt
-make tools
 ```
+Note: nimclang docker image contains tools & wabt.
 
 ## Building the examples
 
