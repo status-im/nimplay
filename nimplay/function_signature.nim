@@ -17,7 +17,10 @@ template generate_method_sig*(func_sig: untyped, v2_sig: bool = false): string =
 
 
 proc getKHash*(inp: string): string {.compileTime.} =
-  let exec_string = "../tools/k256_sig \"" & inp & "\""
+  when defined(osk256_sig):
+    let exec_string = "/usr/bin/k256_sig \"" & inp & "\""
+  else:
+    let exec_string = "../tools/k256_sig \"" & inp & "\""
   let outp_shell = staticExec(exec_string)
   return outp_shell
 
@@ -95,3 +98,4 @@ proc strip_pragmas*(proc_def: NimNode): NimNode =
     else:
       new_proc_def.add(newEmptyNode())
   return new_proc_def
+
