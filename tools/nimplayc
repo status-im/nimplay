@@ -3,17 +3,14 @@
 NIM_FILE=$1
 WASM_FILE="${NIM_FILE%.*}.wasm"
 
-echo $WASM_FILE
-echo $NIM_FILE
-echo "^^^"
 set -ex
-PATH_PARAMS="-p:/nimplay/vendor/nimcrypto -p:/nimplay/vendor/stint -p:/nimplay/vendor/nim-stew/"
+PATH_PARAMS="-p:/nimplay/ -p:/nimplay/vendor/nimcrypto -p:/nimplay/vendor/stint -p:/nimplay/vendor/nim-stew/"
 NIM_CLANG_C_FLAGS="--passC:\""--target=wasm32-unknown-unknown-wasm\"" --passC:\""-I./include\"""
 NIM_CLANG_LINKER_FLAGS="--clang.options.linker:\"-nostdlib -Wl,--no-entry,--allow-undefined,--strip-all,--export-dynamic\" --passL:\"--target=wasm32-unknown-unknown-wasm\""
 NIM_CLANG_ALL_FLAGS="${NIM_CLANG_C_FLAGS} ${NIM_CLANG_LINKER_FLAGS} --os:standalone --cpu:i386 --cc:clang --gc:none --nomain -d:release"
 NIM_CLANG_WASM32_C="nim c -d:osk256_sig ${PATH_PARAMS} ${NIM_CLANG_ALL_FLAGS}"
 
-
+cp /nimplay/examples/panicoverride.nim ./
 eval "${NIM_CLANG_WASM32_C} --out:${WASM_FILE} ${NIM_FILE}"
 
 # Postprocess produced wasm file
@@ -28,3 +25,4 @@ $wasm2wat "$WASM_FILE" |
 $wat2wasm -o "$WASM_FILE" ./wasm.tmp
 
 rm ./wasm.tmp
+rm ./panicoverride.nim
