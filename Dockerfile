@@ -1,7 +1,7 @@
 FROM ubuntu:18.04
 
-ADD . /code
-WORKDIR /code
+ADD . /nimplay/
+WORKDIR /nimplay/
 
 RUN apt-get update && \
     apt-get install -y software-properties-common wget curl gcc g++ git cmake && \
@@ -23,8 +23,9 @@ RUN apt-get update && \
     make install && \
     cd ../../ && \
     rm -rf wabt && \
-    nim c -d:release -p:/code/vendor/nimcrypto -p:/code/vendor/stint -p:/code/vendor/nim-stew/ --out:/usr/bin/k256_sig tools/k256_sig.nim && \
-    nim c -d:release -p:/code/vendor/nimcrypto -p:/code/vendor/stint -p:/code/vendor/nim-stew/ --out:/usr/bin/abi_gen tools/abi_gen.nim && \
+    nim c -d:release -p:/nimplay/vendor/nimcrypto -p:/nimplay/vendor/stint -p:/nimplay/vendor/nim-stew/ --out:/usr/bin/k256_sig tools/k256_sig.nim && \
+    nim c -d:release -p:/nimplay/vendor/nimcrypto -p:/nimplay/vendor/stint -p:/nimplay/vendor/nim-stew/ --out:/usr/bin/abi_gen tools/abi_gen.nim && \
+    cp tools/nimplayc /usr/bin/nimplayc && \
     update-alternatives --install /usr/bin/clang clang /usr/bin/clang-8 1000 && \
     update-alternatives --install /usr/bin/wasm-ld wasm-ld /usr/bin/wasm-ld-8 1000 && \
     apt-get remove -y cmake curl wget gcc software-properties-common && \
