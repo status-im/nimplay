@@ -61,6 +61,19 @@ proc generate_storage_get_func*(storage_keyword: string, global_ctx: GlobalConte
       return tmp
     """)
     return (new_proc, new_proc_name)
+  elif var_info.var_type == "bool":
+    var new_proc = parseStmt(fmt"""
+    proc {new_proc_name}(): bool =
+      var
+        tmp {{.noinit.}}: bytes32
+        pos = {$slot_number}.stuint(32).toByteArrayBE
+      storageLoad(pos, addr tmp)
+      if tmp[31] == 1:
+        return true
+      else:
+        return false
+    """)
+    return (new_proc, new_proc_name)
   else:
     raise newException(ParserError, var_info.var_type & " storage is not supported at the moment.")
 
@@ -111,6 +124,17 @@ proc generate_storage_set_func*(storage_keyword: string, global_ctx: GlobalConte
       storageStore(pos, unsafeAddr value)
     """)
     return (new_proc, new_proc_name)
+  elif var_info.var_type == "bool":
+    var new_proc = parseStmt(fmt"""
+    proc {new_proc_name}(value: bool) =
+      var
+        pos = {$slot_number}.stuint(32).toByteArrayBE
+        v: bytes32
+      if value:
+        v[31] = 1u8
+      storageStore(pos, unsafeAddr value)
+    """)
+    return (new_proc, new_proc_name)
   else:
     raise newException(ParserError, var_info.var_type & " storage is not supported at the moment.")
 
@@ -147,16 +171,20 @@ proc generate_storage_table_set_func*(storage_keyword: string, global_ctx: Globa
     (value_conversion, key_param_arr, key_copy_block, total_key_size) = get_combined_key_info(var_info)
 
   if value_type == "bytes32":
-    value_conversion = "val"
+    value_conversion = "tmp_val = val"
   elif value_type in @["wei_value", "uint128"]:
-    value_conversion = "val.to_bytes32"
+    value_conversion = "tmp_val = val.to_bytes32"
+  elif value_type == "uint256":
+    value_conversion = "tmp_val = val.to_bytes32"
+  elif value_type == "bool":
+    value_conversion = "if val: tmp_val[31] = 1"
   else:
     raise newException(ParserError, "Unsupported '{value_type}' value type.")
 
   var s = fmt"""
     proc {new_proc_name}({key_param_arr.join(",")}, val: {value_type}) =
       var
-        tmp_val = {value_conversion}
+        {value_conversion}
         combined_key {{.noinit.}}: array[{total_key_size}, byte]
 {key_copy_block}
       setTableValue({table_id}.int32, combined_key, tmp_val)
@@ -174,11 +202,16 @@ proc generate_storage_table_get_func*(storage_keyword: string, global_ctx: Globa
     value_type = var_info.key_types[^1]
     table_id = var_info.slot
     (value_conversion, key_param_arr, key_copy_block, total_key_size) = get_combined_key_info(var_info)
+  echo value_type
 
   if value_type == "bytes32":
     value_conversion = "tmp_val"
+  elif value_type == "bool":
+    value_conversion = "tmp_val[31] == 1"
   elif value_type in @["wei_value", "uint128"]:
     value_conversion = "tmp_val.to_uint128"
+  elif value_type == "uint256":
+    value_conversion = "tmp_val.to_uint256"
   else:
     raise newException(ParserError, "Unsupported StorageTable '{value_type}' value type.")
 

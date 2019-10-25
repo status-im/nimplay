@@ -58,6 +58,13 @@ proc get_local_input_type_conversion(tmp_var_name, tmp_var_converted_name, var_t
 
 proc get_local_output_type_conversion(tmp_result_name, tmp_result_converted_name, var_type: string): (NimNode, NimNode) =
   case var_type
+  of "bool":
+    var ident_node = newIdentNode(tmp_result_converted_name)
+    var conversion_node = parseStmt(unindent(fmt"""
+      var {tmp_result_converted_name}: array[32, byte]
+      if tmp_result_name: {tmp_result_converted_name}[31] = 1
+    """))
+    return (ident_node, conversion_node)
   of "uint256":
     var ident_node = newIdentNode(tmp_result_converted_name)
     var conversion_node = nnkVarSection.newTree(
@@ -241,7 +248,7 @@ template get_util_functions() {.dirty.} =
         break
       to_ba[offset + i] = x
 
-  func to_bytes32(a: uint128): bytes32 =
+  func to_bytes32(a: auto): bytes32 =
     var
       tmp: bytes32
     copy_into_ba(tmp, 0, a.toBytesLE)
@@ -249,10 +256,18 @@ template get_util_functions() {.dirty.} =
 
   func to_uint128(a: bytes32): uint128 =
     var
-      tmp_ba: array[32, byte]
+      tmp_ba {.noinit.}: array[32, byte]
       tmp: uint128
     copy_into_ba(tmp_ba, 0, a)
     tmp = fromBytes(Uint128, tmp_ba)
+    tmp
+
+  func to_uint256(a: bytes32): uint256 =
+    var
+      tmp_ba {.noinit.}: array[32, byte]
+      tmp: uint256
+    copy_into_ba(tmp_ba, 0, a)
+    tmp = fromBytes(Uint256, tmp_ba)
     tmp
 
   proc assertNotPayable() =
