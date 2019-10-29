@@ -51,7 +51,7 @@ contract("NimCoin"):
     log.Transfer(msg.sender, to, value)
     return true
 
-  proc transferFrom(ffrom : address, to : address, value : uint256): bool {.self,msg,log.} =
+  proc transferFrom(ffrom: address, to: address, value: uint256): bool {.self,msg,log.} =
     # @dev Transfer tokens ffrom one address to another.
     #     Note that while this function emits a Transfer event, this is not required as per the specification,
     #     and other compliant implementations may not emit the event.
@@ -72,12 +72,12 @@ contract("NimCoin"):
     #      https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
     # @param spender The address which will spend the funds.
     # @param value The amount of tokens to be spent.
-    self.allowances[msg.sender][spender] =value 
+    self.allowances[msg.sender][spender] =value
     log.Approval(msg.sender, spender, value)
-    return True
+    return true
 
   proc mint(to: address, value: uint256) {.self,msg,log.} =
-    # @dev Mint an amount of the token and assigns it to an account. 
+    # @dev Mint an amount of the token and assigns it to an account.
     #      This encapsulates the modification of balances such that the
     #      proper events are emitted.
     # @param to The account that will receive the created tokens.
@@ -85,6 +85,6 @@ contract("NimCoin"):
 
     assert msg.sender == self.minter
     assert to != ZERO_ADDRESS
-    self.total_supply +=value 
-    self.balanceOf[to] +=value 
+    self.total_supply += value
+    self.balanceOf[to] += value
     log.Transfer(ZERO_ADDRESS, to, value)
