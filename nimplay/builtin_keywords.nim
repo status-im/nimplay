@@ -94,9 +94,23 @@ proc has_self_storage_table_get(node: NimNode, global_ctx: GlobalContext): (bool
   return (false, node)
 
 
+proc has_self_storage_infix(node: NimNode): (bool, NimNode) =
+  var n: NimNode
+  if node.kind == nnkInfix and node[1].kind == nnkBracketExpr:
+    var keys: seq[NimNode]
+    extract_keys(node[1], keys)
+    if keys.len > 0 and is_dot_variable(keys[0]) and strVal(keys[0][0]) == "self":
+      return (true,node)
+  return (false, node)
+
+
 proc is_keyword(node: NimNode, global_ctx: GlobalContext): (bool, string) =
-  var 
-    (valid, sub_node) = has_self_storage_table_set(node, global_ctx)
+  var
+    (valid, sub_node) = has_self_storage_infix(node)
+  if valid:
+    echo treeRepr(sub_node)
+    return (true, "infix_set_table." & strVal(sub_node[0])[0] & "." & strVal(sub_node[1][0][1]))
+  (valid, sub_node) = has_self_storage_table_set(node, global_ctx)
   if valid:
     return (true, "set_table_self." & strVal(sub_node[1]))
   (valid, sub_node) = has_self_storage_table_get(node, global_ctx)
@@ -133,7 +147,12 @@ proc find_builtin_keywords(func_body: NimNode, used_keywords: var seq[string], g
       if proposed_setter_kw in used_keywords:
         setter_kw = true
     if is_kw and not setter_kw:  # Should be added to globals list.
-        used_keywords.add(kw_key_name)
+      used_keywords.add(kw_key_name)
+    # For infix make sure we have getter & setter functions.
+    if is_kw and kw_key_name.startsWith("infix_set_table"):
+      var var_name = kw_key_name.split('.')[^1]
+      used_keywords.add("set_table_self." & var_name)
+      used_keywords.add("get_table_self." & var_name)
     find_builtin_keywords(child, used_keywords, global_ctx)
 
 
@@ -195,6 +214,8 @@ proc generate_defines(keywords: seq[string], global_ctx: GlobalContext): (NimNod
 
 proc check_keyword_defines(keywords_used: seq[string], local_ctx: LocalContext) =
   for keyword in keywords_used:
+    if "infix_set_table" in keyword:
+      continue
     var base = keyword.replace("set_", "").replace("get_", "").replace("table_", "")
     if "." in base:
       base = base.split(".")[0]
@@ -216,6 +237,9 @@ proc get_keyword_defines*(proc_def: NimNode, global_ctx: GlobalContext, local_ct
 
 
 proc get_next_storage_node(kw_key_name: string, global_keyword_map: Table[string, string], current_node: NimNode): NimNode =
+  var 
+    keys: seq[NimNode]
+
   if kw_key_name.startsWith("self."):
     return nnkCall.newTree(
       newIdentNode(global_keyword_map[kw_key_name])
@@ -227,7 +251,6 @@ proc get_next_storage_node(kw_key_name: string, global_keyword_map: Table[string
       )
   elif kw_key_name.startsWith("get_table_self."):
     var 
-      keys: seq[NimNode]
       call_func = nnkCall.newTree(
         newIdentNode(global_keyword_map[kw_key_name]),
       )
@@ -237,7 +260,6 @@ proc get_next_storage_node(kw_key_name: string, global_keyword_map: Table[string
     return call_func
   elif kw_key_name.startsWith("set_table_self."):
     var 
-      keys: seq[NimNode]
       call_func = nnkCall.newTree(
         newIdentNode(global_keyword_map[kw_key_name]),
       )
@@ -246,6 +268,34 @@ proc get_next_storage_node(kw_key_name: string, global_keyword_map: Table[string
       call_func.add(param)
     call_func.add(current_node[1])  # val param
     return call_func
+  elif kw_key_name.startsWith("infix_set_table"):
+    # infix_set_table.balanceOf
+    echo "FOUND: " & kw_key_name
+    var
+      tmp = kw_key_name.split(".")
+      (infix_operator, table_name) = (tmp[1], tmp[2])
+      set_call_func = nnkCall.newTree(
+        newIdentNode(global_keyword_map["set_table_self." & table_name]),
+      )
+      get_call_func = nnkCall.newTree(
+        newIdentNode(global_keyword_map["get_table_self." & table_name]),
+      )
+    # echo treeRepr(current_node)
+    extract_keys(current_node[1], keys)
+    for k in keys:
+      echo treeRepr(k)
+    # Get value.
+    for param in keys[1..keys.len - 1]:
+      get_call_func.add(param)
+      set_call_func.add(param)
+    # Set value
+    var
+      op_get = newNimNode(nnkInfix)
+    op_get.add(newIdentNode(infix_operator))
+    op_get.add(get_call_func)
+    op_get.add(current_node[2])
+    set_call_func.add(op_get)
+    return set_call_func
   else:
     raise newException(ParserError, "Unknown global self keyword")
 
@@ -262,7 +312,7 @@ proc replace_keywords*(ast_node: NimNode, global_keyword_map: Table[string, stri
     if is_kw:
       if kw_key_name.startsWith("log."):
         next = generate_next_call_log_node(kw_key_name, global_keyword_map, child)
-      elif "self." in kw_key_name:
+      elif "self." in kw_key_name or kw_key_name.startsWith("infix_set_table"):
           next = get_next_storage_node(kw_key_name, global_keyword_map, child)
       elif kw_key_name in TMP_FUNC_KEYWORDS:
         next = nnkCall.newTree(
