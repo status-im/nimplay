@@ -94,9 +94,34 @@ proc has_self_storage_table_get(node: NimNode, global_ctx: GlobalContext): (bool
   return (false, node)
 
 
+proc has_infix_storage_table(node: NimNode): (bool, NimNode) =
+  var n: NimNode
+  if node.kind == nnkInfix and node[1].kind == nnkBracketExpr:
+    var keys: seq[NimNode]
+    extract_keys(node[1], keys)
+    if keys.len > 0 and is_dot_variable(keys[0]) and strVal(keys[0][0]) == "self":
+      return (true, node)
+  return (false, node)
+
+
+proc has_infix_self_storage(node: NimNode): (bool, NimNode) =
+  if node.kind == nnkInfix:
+    if is_dot_variable(node[1]) and node[1][0].strVal == "self":
+      return (true, node)
+  return (false, node)
+
+
 proc is_keyword(node: NimNode, global_ctx: GlobalContext): (bool, string) =
-  var 
-    (valid, sub_node) = has_self_storage_table_set(node, global_ctx)
+  var
+    (valid, sub_node) = has_infix_self_storage(node)
+  if valid:
+    return (true, "infix_set_self." & strVal(sub_node[0])[0] & "." & strVal(sub_node[1][1]))
+  (valid, sub_node) = has_infix_storage_table(node)
+  if valid:
+    var keys: seq[NimNode]
+    extract_keys(node[1], keys)
+    return (true, "infix_set_table." & strVal(sub_node[0])[0] & "." & strVal(keys[0][1]))
+  (valid, sub_node) = has_self_storage_table_set(node, global_ctx)
   if valid:
     return (true, "set_table_self." & strVal(sub_node[1]))
   (valid, sub_node) = has_self_storage_table_get(node, global_ctx)
@@ -133,7 +158,16 @@ proc find_builtin_keywords(func_body: NimNode, used_keywords: var seq[string], g
       if proposed_setter_kw in used_keywords:
         setter_kw = true
     if is_kw and not setter_kw:  # Should be added to globals list.
-        used_keywords.add(kw_key_name)
+      used_keywords.add(kw_key_name)
+    # For infix make sure we have getter & setter functions.
+    if is_kw and kw_key_name.startsWith("infix_set_table"):
+      var var_name = kw_key_name.split('.')[^1]
+      used_keywords.add("set_table_self." & var_name)
+      used_keywords.add("get_table_self." & var_name)
+    elif is_kw and kw_key_name.startsWith("infix_set_self"):
+      var var_name = kw_key_name.split('.')[^1]
+      used_keywords.add("set_self." & var_name)
+      used_keywords.add("self." & var_name)
     find_builtin_keywords(child, used_keywords, global_ctx)
 
 
@@ -195,6 +229,8 @@ proc generate_defines(keywords: seq[string], global_ctx: GlobalContext): (NimNod
 
 proc check_keyword_defines(keywords_used: seq[string], local_ctx: LocalContext) =
   for keyword in keywords_used:
+    if "infix_" in keyword:
+      continue
     var base = keyword.replace("set_", "").replace("get_", "").replace("table_", "")
     if "." in base:
       base = base.split(".")[0]
@@ -216,6 +252,9 @@ proc get_keyword_defines*(proc_def: NimNode, global_ctx: GlobalContext, local_ct
 
 
 proc get_next_storage_node(kw_key_name: string, global_keyword_map: Table[string, string], current_node: NimNode): NimNode =
+  var 
+    keys: seq[NimNode]
+
   if kw_key_name.startsWith("self."):
     return nnkCall.newTree(
       newIdentNode(global_keyword_map[kw_key_name])
@@ -227,7 +266,6 @@ proc get_next_storage_node(kw_key_name: string, global_keyword_map: Table[string
       )
   elif kw_key_name.startsWith("get_table_self."):
     var 
-      keys: seq[NimNode]
       call_func = nnkCall.newTree(
         newIdentNode(global_keyword_map[kw_key_name]),
       )
@@ -237,7 +275,6 @@ proc get_next_storage_node(kw_key_name: string, global_keyword_map: Table[string
     return call_func
   elif kw_key_name.startsWith("set_table_self."):
     var 
-      keys: seq[NimNode]
       call_func = nnkCall.newTree(
         newIdentNode(global_keyword_map[kw_key_name]),
       )
@@ -246,6 +283,46 @@ proc get_next_storage_node(kw_key_name: string, global_keyword_map: Table[string
       call_func.add(param)
     call_func.add(current_node[1])  # val param
     return call_func
+  elif kw_key_name.startsWith("infix"):
+    # infix_set_table.balanceOf
+    var
+      set_call_func, get_call_func: NimNode
+      tmp = kw_key_name.split(".")
+      (infix_operator, var_name) = (tmp[1], tmp[2])
+
+    if kw_key_name.startsWith("infix_set_table"):
+      set_call_func = nnkCall.newTree(
+        newIdentNode(global_keyword_map["set_table_self." & var_name]),
+      )
+      get_call_func = nnkCall.newTree(
+        newIdentNode(global_keyword_map["get_table_self." & var_name]),
+      )
+      # echo treeRepr(current_node)
+      extract_keys(current_node[1], keys)
+      # Get value.
+      for param in keys[1..keys.len - 1]:
+        get_call_func.add(param)
+        set_call_func.add(param)
+
+    elif kw_key_name.startsWith("infix_set_self"):
+      set_call_func = nnkCall.newTree(
+        newIdentNode(global_keyword_map["set_self." & var_name]),
+      )
+      get_call_func = nnkCall.newTree(
+        newIdentNode(global_keyword_map["self." & var_name]),
+      )
+    else:
+      raise newException(ParserError, "Unknown infix operation")
+
+    var
+      op_get = newNimNode(nnkInfix)
+    op_get.add(newIdentNode(infix_operator))
+    op_get.add(get_call_func)
+    op_get.add(current_node[2])
+    set_call_func.add(op_get)
+
+    return set_call_func
+
   else:
     raise newException(ParserError, "Unknown global self keyword")
 
@@ -262,7 +339,7 @@ proc replace_keywords*(ast_node: NimNode, global_keyword_map: Table[string, stri
     if is_kw:
       if kw_key_name.startsWith("log."):
         next = generate_next_call_log_node(kw_key_name, global_keyword_map, child)
-      elif "self." in kw_key_name:
+      elif "self." in kw_key_name or kw_key_name.startsWith("infix_set_table"):
           next = get_next_storage_node(kw_key_name, global_keyword_map, child)
       elif kw_key_name in TMP_FUNC_KEYWORDS:
         next = nnkCall.newTree(

@@ -77,3 +77,10 @@ let
   TYPE_NAMES* {.compileTime.} = @["address", "uint256", "bytes32", "int128", "uint128"]
   ALL_KEYWORDS* {.compileTime.} = concat(TYPE_NAMES, KEYWORDS)
   ALLOWED_PRAGMAS* {.compileTime.} = @["payable", "event", "self", "msg", "log"]
+
+# Constants
+
+let ZERO_ADDRESS*: address = [
+  0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+  0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8
+]

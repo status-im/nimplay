@@ -63,6 +63,7 @@ proc check_valid_variable_name*(node: NimNode, global_ctx: GlobalContext) =
 
 proc get_byte_size_of*(type_str: string): int =
   let BASE32_TYPES_NAMES: array = [
+    "bool",
     "uint256",
     "uint128",
     "int128",
