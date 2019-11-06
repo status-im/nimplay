@@ -66,9 +66,11 @@ king_of_the_hill:
 
 .PHONY: examples
 examples: king_of_the_hill
- 	$(WASM32_NIMC) --out:examples/registry.wasm examples/registry.nim
- 	$(POSTPROCESS) examples/registry.wasm
- 	$(WASM32_NIMC) --out:examples/balances.wasm examples/balances.nim
- 	$(POSTPROCESS) examples/balances.wasm
- 	$(WASM32_NIMC) --out:examples/erc20.wasm examples/erc20.nim
- 	$(POSTPROCESS) examples/erc20.wasm
+	$(WASM32_NIMC) --out:examples/registry.wasm examples/registry.nim
+	$(POSTPROCESS) examples/registry.wasm
+	$(WASM32_NIMC) --out:examples/balances.wasm examples/balances.nim
+	$(POSTPROCESS) examples/balances.wasm
+	$(WASM32_NIMC) --out:examples/erc20.wasm examples/erc20.nim
+	$(POSTPROCESS) examples/erc20.wasm
+	$(WASM32_NIMC) --out:examples/default_func.wasm examples/default_func.nim
+	$(POSTPROCESS) examples/default_func.wasm

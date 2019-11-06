@@ -65,6 +65,7 @@ type
     global_variables*: Table[string, VariableType]
     events*: Table[string, EventSignature]
     getter_funcs*: seq[VariableType]
+    has_default_func*: bool
 
 # Exceptions.
 
