@@ -7,7 +7,7 @@ contract("NimCoin"):
     name*: bytes32
     symbol*: bytes32
     decimals*: uint256
-    total_supply*: uint256
+    total_supply: uint256
     minter*: address
     initialised: bool
 

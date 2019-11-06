@@ -62,7 +62,7 @@ proc get_local_output_type_conversion(tmp_result_name, tmp_result_converted_name
     var ident_node = newIdentNode(tmp_result_converted_name)
     var conversion_node = parseStmt(unindent(fmt"""
       var {tmp_result_converted_name}: array[32, byte]
-      if tmp_result_name: {tmp_result_converted_name}[31] = 1
+      if {tmp_result_name}: {tmp_result_converted_name}[31] = 1
     """))
     return (ident_node, conversion_node)
   of "uint256":
@@ -550,7 +550,13 @@ proc handle_contract_interface(in_stmts: NimNode): NimNode =
   # Add default function.
   var default_func_node: NimNode
   if global_ctx.has_default_func:
-    default_func_node = parseStmt(unindent("""
+    var
+      default_fsig = filter(
+        function_signatures, proc(x: FunctionSignature): bool = x.name == "default"
+      )[0]
+      assert_payable_str = if default_fsig.payable: "assertNotPayable()" else: ""
+    default_func_node = parseStmt(unindent(fmt"""
+      {assert_payable_str}
       default()
       finish(nil, 0)
     """))
