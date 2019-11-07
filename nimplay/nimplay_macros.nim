@@ -62,7 +62,7 @@ proc get_local_output_type_conversion(tmp_result_name, tmp_result_converted_name
     var ident_node = newIdentNode(tmp_result_converted_name)
     var conversion_node = parseStmt(unindent(fmt"""
       var {tmp_result_converted_name}: array[32, byte]
-      if tmp_result_name: {tmp_result_converted_name}[31] = 1
+      if {tmp_result_name}: {tmp_result_converted_name}[31] = 1
     """))
     return (ident_node, conversion_node)
   of "uint256":
@@ -334,6 +334,16 @@ proc get_getter_func(var_struct: VariableType): NimNode =
       self.`storage_name_node`
 
 
+proc check_default_func(sig: FunctionSignature, global_ctx: GlobalContext, child: NimNode) =
+  ## Check default function is correctly defined.
+  if global_ctx.has_default_func:
+    raiseParserError("Only one default function may be defined per Contract.", child)
+  if sig.is_private:
+    raiseParserError("Default function has to be public and payable.", child)
+  if sig.inputs.len > 0 or sig.outputs.len > 0:
+    raiseParserError("Default function can not have arguments nor return a value.", child)
+
+
 proc handle_contract_interface(in_stmts: NimNode): NimNode = 
   var
     main_out_stmts = newStmtList()
@@ -365,6 +375,9 @@ proc handle_contract_interface(in_stmts: NimNode): NimNode =
         handle_event_defines(child, global_ctx)
         continue
       var ctx = generate_context(child, global_ctx)
+      if ctx.sig.name == "default":
+        check_default_func(ctx.sig, global_ctx, child)
+        global_ctx.has_default_func = true
       function_signatures.add(ctx.sig)
       var new_proc_def = strip_pragmas(child)
       new_proc_def = replace_keywords(
@@ -425,6 +438,8 @@ proc handle_contract_interface(in_stmts: NimNode): NimNode =
   # Build function selector.
   for func_sig in function_signatures:
     if func_sig.is_private:
+      continue
+    if func_sig.name == "default" : # default function should have a selector.
       continue
     echo "Building " & func_sig.method_sig
     var call_and_copy_block = nnkStmtList.newTree()
@@ -532,14 +547,28 @@ proc handle_contract_interface(in_stmts: NimNode): NimNode =
       )
     )
 
-  # Add default revert into selector.
+  # Add default function.
+  var default_func_node: NimNode
+  if global_ctx.has_default_func:
+    var
+      default_fsig = filter(
+        function_signatures, proc(x: FunctionSignature): bool = x.name == "default"
+      )[0]
+      assert_payable_str = if default_fsig.payable: "assertNotPayable()" else: ""
+    default_func_node = parseStmt(unindent(fmt"""
+      {assert_payable_str}
+      default()
+      finish(nil, 0)
+    """))
+  else:
+    default_func_node = parseStmt(unindent("""
+      discard
+    """))
+  echo treeRepr(default_func_node)
+  # Add default to function table.
   selector_CaseStmt.add(
     nnkElse.newTree(
-      nnkStmtList.newTree(
-        nnkDiscardStmt.newTree(  # discard
-          newEmptyNode()
-        )
-      )
+      default_func_node
     )
   )
   out_stmts.add(selector_CaseStmt)
