@@ -89,3 +89,19 @@ contract("Registry"):
   proc get_name*(k: bytes32): bytes32 {.self.} =
     self.names[k]
 ```
+
+# Default / Fallback Function
+
+To define a Fallback function, add function to your contract named `default`.
+
+```nim
+
+contract("Default"):
+    proc default*() =
+       rever(nil, 0)
+       # execute on all transactions
+```
+
+If no Fallback is declared the fallback function causes a `revert()`.
+
+
