@@ -1,5 +1,7 @@
 import macros
 
+import utils
+
 {.push cdecl, importc.}
 
 proc useGas*(amount: int64)
@@ -296,4 +298,8 @@ macro exportwasm*(p: untyped): untyped =
   expectKind(p, nnkProcDef)
   result = p
   result.addPragma(newIdentNode("exportc"))
-  result.addPragma(newColonExpr(newIdentNode("codegenDecl"), newLit("__attribute__ ((visibility (\"default\"))) $# $#$#")))
+  result.addPragma(
+    newColonExpr(
+      newIdentNode("codegenDecl"), newLit("__attribute__ ((visibility (\"default\"))) $# $#$#")
+    )
+  )

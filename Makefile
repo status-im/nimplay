@@ -74,3 +74,7 @@ examples: king_of_the_hill
 	$(POSTPROCESS) examples/erc20.wasm
 	$(WASM32_NIMC) --out:examples/default_func.wasm examples/default_func.nim
 	$(POSTPROCESS) examples/default_func.wasm
+
+.PHONY: ee-examples
+ee-examples:
+	$(WASM32_NIMC) --out:examples/ee/helloworld.wasm examples/ee/helloworld.nim
