@@ -79,6 +79,7 @@ examples: king_of_the_hill
 .PHONY: ee-examples
 ee-examples:
 	$(WASM32_NIMC) --out:examples/ee/helloworld.wasm examples/ee/helloworld.nim
+	$(WASM32_NIMC) --out:examples/ee/bazaar.wasm examples/ee/bazaar.nim
 
 
 .PHONY: test-ee
