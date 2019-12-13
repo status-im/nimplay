@@ -1,6 +1,6 @@
 import 
   macros, strformat, strutils,
-  tables, math
+  tables, math, macros
 
 import
   ./types
