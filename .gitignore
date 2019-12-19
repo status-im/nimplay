@@ -3,4 +3,5 @@ tools/wabt/*
 tools/abi_gen
 examples/*.wasm
 .priv_key_hex
+*.wasm
 
