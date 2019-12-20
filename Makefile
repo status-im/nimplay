@@ -81,8 +81,16 @@ ee-examples:
 	$(WASM32_NIMC) --out:examples/ee/helloworld.wasm examples/ee/helloworld.nim
 	$(WASM32_NIMC) --out:examples/ee/block_echo.wasm examples/ee/block_echo.nim
 
-
 .PHONY: test-ee
 test-ee: ee-examples
 	cd tests/ee/; \
 	   ./test.sh
+
+.PHONY: substrate-examples
+substrate-examples:
+	$(WASM32_NIMC) --out:examples/substrate/hello_world.wasm examples/substrate/hello_world.nim
+
+.PHONY: test-substrate
+test-substrate: substrate-examples	
+	cd tests/substrate; \
+		SUBSTRATE_PATH="${HOME}/.cargo/bin/substrate" ./test.sh
