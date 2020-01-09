@@ -10,7 +10,7 @@ DOCKER_NLVM_C=$(DOCKER_NLVM) $(PATH_PARAMS) $(NLVM_WAMS32_FLAGS) c
 # Use nim + clang
 DOCKER_NIM_CLANG=docker run -e HOME='/tmp/' --user $(user_id):$(user_id) -w /code/ -v $(pwd):/code/ --entrypoint="/usr/bin/nim" jacqueswww/nimclang --verbosity:2
 DOCKER_NIM_CLANG_PASS_FLAGS = --passC:"--target=wasm32-unknown-unknown-wasm" \
---passL:"--target=wasm32-unknown-unknown-wasm" --passC:"-I./include" --clang.options.linker:"-nostdlib -Wl,--no-entry,--allow-undefined,--strip-all,--export-dynamic"
+--passL:"--target=wasm32-unknown-unknown-wasm" --passC:"-I./include" --clang.options.linker:"-nostdlib -Wl,--no-entry,--allow-undefined,--strip-all,--export-dynamic,--import-memory,--max-memory=131072"
 DOCKER_NIM_CLANG_FLAGS=$(DOCKER_NIM_CLANG_PASS_FLAGS) --os:standalone --cpu:i386 --cc:clang --gc:none --nomain -d:release
 DOCKER_NIM_CLANG_C=$(DOCKER_NIM_CLANG) --cc:clang $(PATH_PARAMS) c
 DOCKER_NIM_CLANG_WASM32_C=$(DOCKER_NIM_CLANG) $(DOCKER_NIM_CLANG_FLAGS) $(PATH_PARAMS) c
@@ -86,11 +86,17 @@ test-ee: ee-examples
 	cd tests/ee/; \
 	   ./test.sh
 
+
+
+SUBSTRATE_POSTPROCESS=tools/substrate_postprocess.sh
+
 .PHONY: substrate-examples
 substrate-examples:
 	$(WASM32_NIMC) --out:examples/substrate/hello_world.wasm examples/substrate/hello_world.nim
+	$(SUBSTRATE_POSTPROCESS) examples/substrate/hello_world.wasm
 
 .PHONY: test-substrate
 test-substrate: substrate-examples	
 	cd tests/substrate; \
 		SUBSTRATE_PATH="${HOME}/.cargo/bin/substrate" ./test.sh
+

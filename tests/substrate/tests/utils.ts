@@ -39,7 +39,6 @@ export async function putCode(
     .toString("hex");
   const tx = api.tx.contracts.putCode(gasRequired, `0x${wasmCode}`);
   const result: any = await sendAndReturnFinalized(signer, tx);
-  console.log('result', result)
   const record = result.findRecord("contracts", "CodeStored");
 
   if (!record) {

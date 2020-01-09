@@ -79,17 +79,9 @@ describe("Nimplay Hello World", () => {
       STORAGE_KEY
     );
     expect(initialValue).toBeDefined();
-    expect(initialValue.toString()).toEqual("0x00");
+    expect(initialValue.toString()).toEqual("");
 
     await callContract(api, testAccount, address, "0x00");
-
-    const newValue = await getContractStorage(api, address, STORAGE_KEY);
-    expect(newValue.toString()).toEqual("0x01");
-
-    await callContract(api, testAccount, address, "0x00");
-
-    const flipBack = await getContractStorage(api, address, STORAGE_KEY);
-    expect(flipBack.toString()).toEqual("0x00");
 
     done();
   });

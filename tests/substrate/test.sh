@@ -12,7 +12,7 @@ fi
 
 # Purge dev chain and then spin up the substrate node in background
 $SUBSTRATE_PATH purge-chain --dev -y
-$SUBSTRATE_PATH --dev &
+$SUBSTRATE_PATH --dev -l debug &
 SUBSTRATE_PID=$!
 
 # # Execute tests
