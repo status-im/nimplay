@@ -47,9 +47,8 @@ beforeEach(
 );
 
 
-
-describe("Nimplay Hello World", () => {
-  test("Raw Flipper contract", async (done): Promise<void> => {
+describe("Nimplay Flipper", () => {
+  test("Can deploy and execute", async (done): Promise<void> => {
     // See https://github.com/paritytech/srml-contracts-waterfall/issues/6 for info about
     // how to get the STORAGE_KEY of an instantiated contract
 
@@ -58,7 +57,7 @@ describe("Nimplay Hello World", () => {
     const codeHash = await putCode(
       api,
       testAccount,
-      "../../../examples/substrate/hello_world.wasm"
+      "../../../examples/substrate/flipper.wasm"
     );
     expect(codeHash).toBeDefined();
 
@@ -82,9 +81,10 @@ describe("Nimplay Hello World", () => {
     expect(initialValue.toString()).toEqual("");
 
     await callContract(api, testAccount, address, "0x00");
+    await callContract(api, testAccount, address, "0x01");
+    await callContract(api, testAccount, address, "0x74657374");
 
     done();
   });
-
 
 });

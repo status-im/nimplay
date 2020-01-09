@@ -94,6 +94,8 @@ SUBSTRATE_POSTPROCESS=tools/substrate_postprocess.sh
 substrate-examples:
 	$(WASM32_NIMC) --out:examples/substrate/hello_world.wasm examples/substrate/hello_world.nim
 	$(SUBSTRATE_POSTPROCESS) examples/substrate/hello_world.wasm
+	$(WASM32_NIMC) --out:examples/substrate/flipper.wasm examples/substrate/flipper.nim
+	$(SUBSTRATE_POSTPROCESS) examples/substrate/flipper.wasm
 
 .PHONY: test-substrate
 test-substrate: substrate-examples	
