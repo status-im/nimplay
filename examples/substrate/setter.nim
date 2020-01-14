@@ -5,7 +5,7 @@ proc malloc(n: int): pointer {.importc.}
 
 type 
   Action = enum
-    Flip = 0'u8, Get = 1'u8, SelfEvict = 2'u8
+    Set = 0'u8, Get = 1'u8, SelfEvict = 2'u8
 
 # Init function.
 proc deploy(): uint32 {.exportwasm.} =
@@ -21,6 +21,25 @@ proc get_scratch(): (pointer, int32) =
 proc print(s: cstring) =
   ext_println(s, s.len.int32)
 
+
+proc incr_pointer(oldp: pointer): pointer = 
+  var newp = cast[pointer](cast[uint](oldp) + 1u)
+  newp
+
+
+proc set_val_in_store(scratch_ptr: pointer, scratch_size: int32) =
+  print("Set".cstring)
+  var
+    key: array[32, byte] = [
+      2'u8, 2'u8, 2'u8, 2'u8, 2'u8, 2'u8, 2'u8, 2'u8, 2'u8,
+      2'u8, 2'u8, 2'u8, 2'u8, 2'u8, 2'u8, 2'u8, 2'u8, 2'u8,
+      2'u8, 2'u8, 2'u8, 2'u8, 2'u8, 2'u8, 2'u8, 2'u8, 2'u8,
+      2'u8, 2'u8, 2'u8, 2'u8, 2'u8
+    ]
+    offset_ptr = incr_pointer(scratch_ptr)
+
+  ext_set_storage(addr key, 1.int32 , offset_ptr, scratch_size - 1)
+
 # Main function.
 proc call(): uint32 {.exportwasm.} =
   var
@@ -30,14 +49,14 @@ proc call(): uint32 {.exportwasm.} =
   copyMem(addr selector, scratch_ptr, 1)
 
   case selector
-  of Action.Flip.ord:
-    print("Flip".cstring)
+  of Action.Set.ord:
+    set_val_in_store(scratch_ptr, scratch_size)
   of Action.Get.ord:
-    print("Get".cstring)
+    print("Get: Todo".cstring)
   of Action.SelfEvict.ord:
-    print("SelfEvict".cstring)
+    print("SelfEvict: Todo".cstring)
   else:
-    print("Unknown".cstring)
+    print("Unknown action passed".cstring)
 
   0 # return
 

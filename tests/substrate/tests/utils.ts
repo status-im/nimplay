@@ -45,7 +45,6 @@ export async function putCode(
     console.error("ERROR: No code stored after executing putCode()");
   }
   // Return code hash.
-  console.log(record);
   return record.event.data[0];
 }
 

@@ -46,9 +46,29 @@ beforeEach(
   }
 );
 
-
-describe("Nimplay Flipper", () => {
+describe("Nimplay Hellow World", () => {
   test("Can deploy and execute", async (done): Promise<void> => {
+    const codeHash = await putCode(
+      api,
+      testAccount,
+      "../../../examples/substrate/hello_world.wasm"
+    );
+    expect(codeHash).toBeDefined();
+    const address: Address = await instantiate(
+      api,
+      testAccount,
+      codeHash,
+      "0x00",
+      CREATION_FEE
+    );
+    expect(address).toBeDefined();
+    await callContract(api, testAccount, address, "0x00");
+    done();
+  });
+});
+
+describe("Nimplay Storage Setter", () => {
+  test("Setter: Can deploy and execute", async (done): Promise<void> => {
     // See https://github.com/paritytech/srml-contracts-waterfall/issues/6 for info about
     // how to get the STORAGE_KEY of an instantiated contract
 
@@ -57,12 +77,11 @@ describe("Nimplay Flipper", () => {
     const codeHash = await putCode(
       api,
       testAccount,
-      "../../../examples/substrate/flipper.wasm"
+      "../../../examples/substrate/setter.wasm"
     );
     expect(codeHash).toBeDefined();
 
     // Instantiate a new contract instance and retrieve the contracts address
-    // Call contract with Action: 0x00 = Action::Flip()
     const address: Address = await instantiate(
       api,
       testAccount,
@@ -81,10 +100,12 @@ describe("Nimplay Flipper", () => {
     expect(initialValue.toString()).toEqual("");
 
     await callContract(api, testAccount, address, "0x00");
-    await callContract(api, testAccount, address, "0x01");
-    await callContract(api, testAccount, address, "0x74657374");
+    var val_hex = "03".repeat(32);
+    // "0x00" indicates calling "Set" Action
+    await callContract(api, testAccount, address, "0x00" + val_hex);
+    const newValue = await getContractStorage(api, address, STORAGE_KEY);
+    expect(newValue.toString()).toEqual("0x" + val_hex);
 
     done();
   });
-
 });
