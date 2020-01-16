@@ -5,4 +5,5 @@ examples/*.wasm
 .priv_key_hex
 *.wasm
 tests/ee/ewasm-scout/
+tests/substrate/node_modules/
 
