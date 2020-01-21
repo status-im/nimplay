@@ -1,0 +1,13 @@
+
+beacon_state:
+  execution_scripts:
+    - ../../../examples/ee/block_echo.wasm
+shard_pre_state:
+  exec_env_states:
+    - "0000000000000000000000000000000000000000000000000000000000000000"
+shard_blocks:
+  - env: 0
+    data: "fafbfcfdfef0f0f0f0f0ffffffffffffffffffffffffffffffffe6e5e4e3e2e1"
+shard_post_state:
+  exec_env_states:
+    - "fafbfcfdfef0f0f0f0f0ffffffffffffffffffffffffffffffffe6e5e4e3e2e1"
