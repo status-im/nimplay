@@ -10,7 +10,9 @@ set -ex
 wasm2wat="docker run --entrypoint=wasm2wat -w /code/ -v $(pwd):/code/ jacqueswww/nimclang "
 wat2wasm="docker run --entrypoint=wat2wasm -w /code/ -v $(pwd):/code/ jacqueswww/nimclang "
 
+# Replace "env" with "ethereum"
 $wasm2wat "$WASM_FILE" |
+ sed 's/(import "env" /(import "ethereum" /g' |
  sed  '/(export.*memory\|main.*/! s/(export.*//g' > ./wasm.tmp
 
 $wat2wasm -o "$WASM_FILE" ./wasm.tmp
